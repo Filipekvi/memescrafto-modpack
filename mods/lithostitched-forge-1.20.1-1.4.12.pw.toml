@@ -1,0 +1,13 @@
+name = "lithostitched-forge-1.20.1-1.4.12"
+filename = "lithostitched-forge-1.20.1-1.4.12.jar"
+side = "both"
+
+[download]
+url = "https://cdn.modrinth.com/data/XaDC71GB/versions/Uqt1Zm1l/lithostitched-forge-1.20.1-1.4.12.jar"
+hash-format = "sha512"
+hash = "bb96c8518cf0ccfa1210fee4f01ff38cbee09c3b7f82df330cef8fe4d2c8cfca19a1c7d36136fdd3f23804cb814317de99f907cd5880a8bf1229397e0b2ffc25"
+
+[update]
+[update.modrinth]
+mod-id = "XaDC71GB"
+version = "Uqt1Zm1l"

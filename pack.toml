@@ -1,0 +1,13 @@
+name = "Memescrafto RPG"
+author = "Memescrafto"
+version = "0.1.0-obt"
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "40136affce19384829a7bf783f02102298a24b8180dac26862cb2cb6862103ee"
+
+[versions]
+forge = "47.3.0"
+minecraft = "1.20.1"

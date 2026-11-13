@@ -1,0 +1,13 @@
+name = "variantsandventures-forge-1.0.29+mc1.20.1"
+filename = "variantsandventures-forge-1.0.29+mc1.20.1.jar"
+side = "both"
+
+[download]
+url = "https://cdn.modrinth.com/data/lNDRiXkY/versions/hh911VYy/variantsandventures-forge-1.0.29%2Bmc1.20.1.jar"
+hash-format = "sha512"
+hash = "ed26b47253c142975f24c95fa048f55926ec68b238b152fee77f35fc7fa6eda93afb744a67939257ce9b671bfbe64212cac34ec3a57b13714cf824f18211bcbc"
+
+[update]
+[update.modrinth]
+mod-id = "lNDRiXkY"
+version = "hh911VYy"
