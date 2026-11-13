@@ -144,7 +144,7 @@ hash-format = "sha256"
 hash = "$indexHash"
 
 [versions]
-forge = "47.3.0"
+forge = "47.4.29"
 minecraft = "1.20.1"
 "@
 $packPath = Join-Path $PackDir "pack.toml"

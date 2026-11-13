@@ -1,4 +1,4 @@
-# Memescrafto RPG — Modpack (Forge 1.20.1 - 47.3.0)
+# Memescrafto RPG — Modpack (Forge 1.20.1 - 47.4.29)
 
 ## Para o Administrador (publicar e atualizar)
 
@@ -22,7 +22,7 @@
 ## Para os Jogadores
 
 ### Opção A — Prism Launcher (auto-update automático ao clicar em Jogar)
-1. Crie/importe uma instância **Minecraft 1.20.1 + Forge 47.3.0**.
+1. Crie/importe uma instância **Minecraft 1.20.1 + Forge 47.4.29**.
 2. Coloque `packwiz-installer-bootstrap.jar` dentro da pasta `.minecraft` da instância.
 3. Em **Settings → Custom Commands → Pre-launch command**, cole:
    ```text
@@ -30,7 +30,7 @@
    ```
 
 ### Opção B — Launcher Oficial / CurseForge
-1. Instale **Minecraft 1.20.1 + Forge 47.3.0**.
+1. Instale **Minecraft 1.20.1 + Forge 47.4.29**.
 2. Coloque `packwiz-installer-bootstrap.jar` e `atualizar_modpack.bat` dentro da pasta `.minecraft` do perfil.
 3. Dê dois cliques em `atualizar_modpack.bat` antes de abrir o jogo sempre que houver atualização.
 
