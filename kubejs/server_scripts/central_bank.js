@@ -139,6 +139,7 @@ function exchangeGold(player, server) {
     if (ironCoins > 0) {
         player.give(Item.of('lightmanscurrency:coin_iron', ironCoins));
     }
+    if (global.econMint) global.econMint('central_bank', (goldCoins * 10) + ironCoins, player);
 
     player.playSound('minecraft:block.bell.use', 1.0, 1.2);
     player.playSound('minecraft:entity.experience_orb.pickup', 1.0, 1.0);

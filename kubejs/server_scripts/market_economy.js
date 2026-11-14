@@ -196,6 +196,7 @@ function processPackDelivery(player, server) {
     if (ironCoins > 0) {
         player.give(Item.of('lightmanscurrency:coin_iron', ironCoins));
     }
+    if (global.econMint) global.econMint('market_economy', (goldCoins * 10) + ironCoins, player);
 
     // Entrega Catalisador de Bioma (Apenas para cargas autênticas com pelo menos 150 blocos de viagem!)
     let earnedCatalyst = (!isSynthetic && dist >= 150);
@@ -205,6 +206,8 @@ function processPackDelivery(player, server) {
 
     marketSaturation[foundKey] = (marketSaturation[foundKey] || 0) + 1;
     saveMarketData();
+    if (global.chronicleFirst) global.chronicleFirst('market_caravan', player.name.string, `Entregou a 1a carga na Guilda Mercante (${info.name}, ${dist}m)!`);
+    if (global.chronicleEvent) global.chronicleEvent('market', `${player.name.string} entregou ${info.name} (${dist} blocos) na Guilda Mercante.`);
 
     player.playSound('minecraft:entity.player.levelup', 1.0, 1.0);
     player.playSound('minecraft:entity.experience_orb.pickup', 1.0, 1.2);

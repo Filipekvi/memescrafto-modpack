@@ -321,6 +321,7 @@ function claimVillage(player, server) {
     v.citizens = v.citizens || [];
 
     saveVillages();
+    if (global.chronicleEvent) global.chronicleEvent('village', `${player.name.string} (${v.partyName}) reivindicou a vila "${v.name}".`);
 
     player.playSound('minecraft:ui.toast.challenge_complete', 1.0, 1.0);
     server.tell('§6§l==================================================');
@@ -676,6 +677,7 @@ function startVillageSiege(attacker, hornItem, server) {
         controlProgress: 100.0
     };
     saveSiegeState();
+    if (global.chronicleEvent) global.chronicleEvent('siege', `${attackerParty} (${attacker.name.string}) declarou cerco contra ${v.name} (${v.partyName})!`);
 
     server.tell('§4§l==================================================');
     server.tell('§c§l📯 [DECLARAÇÃO DE CERCO TERRITORIAL!]');
@@ -1012,9 +1014,11 @@ function upgradeVillageProsperity(player, server) {
 
     v.prosperityTier = pInfo.tier + 1;
     v.economicPoints = (v.economicPoints || 0) + (cost * 10);
+    if (global.econSink && cost > 0) global.econSink('village_upgrade', cost * 10, player);
     saveVillages();
 
     let newInfo = getProsperityInfo(v);
+    if (global.chronicleEvent) global.chronicleEvent('village', `Vila "${v.name}" (${v.partyName}) evoluiu para ${newInfo.name}.`);
     if (server) {
         replenishVillageGuards(server, v);
         server.tell(`§6§l👑 [REINO] §e${v.name} §fevoluiu para ${newInfo.name}§f!`);
@@ -1124,6 +1128,7 @@ function hireVillageNpc(player, npcType, server) {
 
     let reqs = {
         armazem:    { name: 'Armazém Geral', villagers: 8,  goldCost: 5,  tier: 0 },
+        fazendeiro: { name: 'Feirante Agrícola', villagers: 10, goldCost: 8, tier: 0 },
         guilda:     { name: 'Guilda Mercante', villagers: 12, goldCost: 10, tier: 1 },
         intendente: { name: 'Intendente de Guerra', villagers: 14, goldCost: 15, tier: 1 },
         banco:      { name: 'Banqueiro Local', villagers: 18, goldCost: 15, tier: 2 },
@@ -1164,6 +1169,7 @@ function hireVillageNpc(player, npcType, server) {
             remGold -= take;
         }
     });
+    if (global.econSink && req.goldCost > 0) global.econSink('village_npc_contract', req.goldCost * 10, player);
 
     player.give(createNpcContractItem(npcType, req.name));
     player.playSound('minecraft:item.totem.use', 0.8, 1.2);
@@ -1201,6 +1207,7 @@ function relocateVillageNpc(player, npcType, server) {
 
     let namesMap = {
         armazem: 'Armazém Geral',
+        fazendeiro: 'Feirante Agrícola',
         guilda: 'Guilda Mercante',
         intendente: 'Intendente de Guerra',
         banco: 'Banqueiro Local',
@@ -1251,6 +1258,7 @@ function hireSiegeMercenaries(player, packKey) {
         if (pack.type === 'defesa' && v && (v.taxGold || 0) >= pack.cost && v.ownerUUID === player.uuid.toString()) {
             v.taxGold -= pack.cost;
             v.defenseMercenaries = { count: pack.count, tier: pack.tier, label: pack.label };
+            if (global.econSink && pack.cost > 0) global.econSink('village_mercenary', pack.cost * 10, player);
             saveVillages();
             player.playSound('minecraft:block.anvil.use', 0.8, 1.2);
             player.tell('§6§m----------------------------------------');
@@ -1273,6 +1281,7 @@ function hireSiegeMercenaries(player, packKey) {
             rem -= take;
         }
     });
+    if (global.econSink && pack.cost > 0) global.econSink('village_mercenary', pack.cost * 10, player);
 
     if (pack.type === 'defesa') {
         v.defenseMercenaries = { count: pack.count, tier: pack.tier, label: pack.label };
@@ -1316,6 +1325,7 @@ function buySiegeHornFromQuartermaster(player) {
             rem -= take;
         }
     });
+    if (global.econSink && cost > 0) global.econSink('village_clarim', cost * 10, player);
     player.give(Item.of('kubejs:clarim_cerco', 1));
     player.playSound('minecraft:event.raid.horn', 1.0, 1.2);
     player.tell('§a[Intendente] Você adquiriu 1x §4§l📯 Clarim de Cerco Territorial§a!');
@@ -1384,10 +1394,12 @@ function buyFromGeneralStore(player, itemKey) {
     player.tell(`§a[Armazém] Compra realizada: §e${prod.name} §aentregue!`);
 
     // IVA Municipal (8% revertido para o cofre da vila)
+    let paidIron = prod.costCoin.includes('iron') ? prod.costAmt : (prod.costAmt * 0.1);
+    let ivaIron = 0;
     let v = getNearestVillage(player.x, player.z, 160);
     if (v && v.ownerUUID && !v.ruined) {
         let isIron = prod.costCoin.includes('iron');
-        let ivaIron = isIron ? Math.max(1, Math.round(prod.costAmt * 0.08)) : 0;
+        ivaIron = isIron ? Math.max(1, Math.round(prod.costAmt * 0.08)) : 0;
         if (ivaIron > 0) {
             v.taxIron = (v.taxIron || 0) + ivaIron;
             if (v.taxIron >= 10) {
@@ -1398,6 +1410,8 @@ function buyFromGeneralStore(player, itemKey) {
         v.economicPoints = (v.economicPoints || 0) + 1;
         saveVillages();
     }
+    let netBurned = Math.max(0, paidIron - ivaIron);
+    if (global.econSink && netBurned > 0) global.econSink('village_store', netBurned, player);
     return 1;
 }
 
@@ -1723,6 +1737,9 @@ ServerEvents.tick(event => {
                     siegeCooldowns[v.id] = Date.now() + (24 * 3600 * 1000); // 24h de trégua após conquista
                 }
                 saveSiegeState();
+                if (!wasTest && global.chronicleEvent) {
+                    global.chronicleEvent('siege', `${v.partyName} conquistou a vila "${v.name}" de ${oldParty} em cerco militar!`);
+                }
 
                 server.tell('§4§l==================================================');
                 server.tell('§6§l👑 VILA CONQUISTADA EM CERCO MILITAR!');
@@ -1745,6 +1762,9 @@ ServerEvents.tick(event => {
                     siegeCooldowns[v.id] = Date.now() + (6 * 3600 * 1000); // 6h de trégua após defesa
                 }
                 saveSiegeState();
+                if (!wasTest && global.chronicleEvent) {
+                    global.chronicleEvent('siege', `${v.partyName} repeliu o cerco e manteve a soberania sobre "${v.name}".`);
+                }
                 server.tell('§a§l==================================================');
                 server.tell('§2§l🛡️ CERCO REPELIDO COM SUCESSO!');
                 server.tell(`§fOs defensores de §6§l${v.partyName} §fmantiveram a soberania sobre §e${v.name}§f!`);
@@ -1826,6 +1846,7 @@ ServerEvents.tick(event => {
                 v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
                 v.taxIron = v.taxIron % 10;
             }
+            if (global.econMint && totalIron > 0) global.econMint('village_census', totalIron, null);
             saveVillages();
 
             // Verifica guarnição apenas quando a área está carregada
@@ -2192,11 +2213,24 @@ global.recordVillageTax = function(x, z, totalIronCoins) {
                 v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
                 v.taxIron = v.taxIron % 10;
             }
+            if (global.econMint) global.econMint('village_trade_tax', taxIronTotal, null);
             saveVillages();
             return { village: v.name, party: v.partyName, taxIron: taxIronTotal };
         }
     }
     return null;
+};
+
+global.getVillageTreasuryTotalIron = function() {
+    let total = 0;
+    let keys = Object.keys(claimedVillages || {});
+    for (let i = 0; i < keys.length; i++) {
+        let v = claimedVillages[keys[i]];
+        if (v && v.ownerUUID && !v.ruined) {
+            total += ((Number(v.taxGold || 0) * 10) + Number(v.taxIron || 0));
+        }
+    }
+    return total;
 };
 
 // ----------------------------------------------------
@@ -2272,6 +2306,7 @@ ServerEvents.commandRegistry(event => {
                             members: [p.uuid.toString()]
                         };
                         saveClans();
+                        if (global.chronicleEvent) global.chronicleEvent('clan', `${p.name.string} fundou o cla "${nome}".`);
 
                         // Atualiza nome da facção na vila caso o jogador já seja Governador
                         for (let vId in claimedVillages) {

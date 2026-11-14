@@ -41,6 +41,10 @@ file = "config/betterfortresses-forge-1_20.toml"
 hash = "d7ad821ff76f0abe305017abe4f3e4aaf7acc6870bc66983eb140cf283ed0b95"
 
 [[files]]
+file = "config/betterpingdisplay-client.toml"
+hash = "164836730c41628abbd6a1cdc3724c3766d8204d57caa18ec31d1f90472d9326"
+
+[[files]]
 file = "config/brewinandchewin-client.toml"
 hash = "0aa704651b261b27ffa35c8b16adbf0edc74d34f51004bb157f2618c0f1154fb"
 
@@ -230,7 +234,7 @@ hash = "02cd35fbcc371cf63303ae1264ad9f4613b3f73ace93417af825baf7d3ac7baf"
 
 [[files]]
 file = "config/oculus.properties"
-hash = "f209ce43813ec19134c8d13e08acfe72d51ddfe6857f0961fb7e1001ef983dee"
+hash = "930ddf7d2f26cb08d58e732bd07ea364cb227d4cc7e2f284222dfb3e4eb6f055"
 
 [[files]]
 file = "config/sidebar_buttons.json"
@@ -662,23 +666,43 @@ hash = "989f3737ae4621b8ff6730bce4cbeeee756921e7e510e0c281c8a350501d98af"
 
 [[files]]
 file = "kubejs/server_scripts/central_bank.js"
-hash = "61cb9d5de226a3c202eceb547232ac7567c3df679182ffaa79dbb2c6b2dbbaa0"
+hash = "63f84a67bd05cd9960db2f6529e608e68552d5d0627e94bc5be39647e414d801"
+
+[[files]]
+file = "kubejs/server_scripts/chat_titles.js"
+hash = "2c74fcb907dbacfeaa339e732dbde46f7627c2e2d9322ee37a2de1445fe7d620"
+
+[[files]]
+file = "kubejs/server_scripts/chronicle_log.js"
+hash = "a19488c9904d9133c00d1dbd72090b9b4743d036e1b620c011c58a4534c6df96"
 
 [[files]]
 file = "kubejs/server_scripts/daily_quests.js"
-hash = "8a2b8b6553caa6549453008ec526f9253024c374e3f59d3cdfd0724b86e026e6"
+hash = "b4d085e044b2218be8824acf52fba2c1b3786d885bc00e4add43140b507115ec"
 
 [[files]]
 file = "kubejs/server_scripts/duel_arena.js"
-hash = "7a55f3537ea6807e54934ecf70e2a49cadf03566be48ccb7883084fa03b4bbb1"
+hash = "7a4511779deee02d3910916fcf39054a66c38d9446572b9d1fc152901aca526f"
 
 [[files]]
 file = "kubejs/server_scripts/dungeon_loot_and_onboarding.js"
-hash = "5bbfafc2fe59d4a12ce1124c93ffb108e249db02301d13ef6b52a64e631970ce"
+hash = "1cfa9822ce504c9a1c955ac186756d6b5976ce75e629685ec5bca42748868215"
+
+[[files]]
+file = "kubejs/server_scripts/economy_ledger.js"
+hash = "36c680801a9b6c85118168468bd968ad5e14b8d5404b61101fcb5d27914a7013"
+
+[[files]]
+file = "kubejs/server_scripts/economy_reset.js"
+hash = "9e4d59d163e353aeeaf52a0a7c497aac92dceb90cafdbfe5b4b177c8946dc019"
+
+[[files]]
+file = "kubejs/server_scripts/farmer_market.js"
+hash = "0f4d37999bc5623e49c9035e42616ccb5c55bca5c48c3a2ac61f6c0c32f55a4e"
 
 [[files]]
 file = "kubejs/server_scripts/market_economy.js"
-hash = "4a5bb72a6492f65344efa5ad3c0405bac16fe3b770db6128058fe0254e6ca7e3"
+hash = "4325f00043afebe5078eb66882b53cb7232b6da9ce6d79c3a5567b12c4a53126"
 
 [[files]]
 file = "kubejs/server_scripts/modular_builder.js"
@@ -686,7 +710,7 @@ hash = "773c43df3ee093fbf05825ac4f18e05c2daac0b8fa4e741ea2981c5a915f6b82"
 
 [[files]]
 file = "kubejs/server_scripts/npc_interactions.js"
-hash = "79e2ab2143aafbaf9dab536c2edd8114bc7281ff7a4dbdb54338fcb2a5fb9f9b"
+hash = "fe4633dea960518d394e5406ded1857c1a4c49f5c73704d8e629dda976b4cfa1"
 
 [[files]]
 file = "kubejs/server_scripts/pack_crafting.js"
@@ -698,15 +722,15 @@ hash = "21fee18afd0abe88f52b9cd1fc764d5fb53557b3312e0fe16ab08d7f4a288dd9"
 
 [[files]]
 file = "kubejs/server_scripts/village_territory.js"
-hash = "d3b0ef5013ef1059df840736795c0accdf07a6162c47f79756e3c10ca820e0c5"
+hash = "a0792415d9df8a9912233b6ee4c92b0eacd24646c0272a43d04c253e9a223313"
 
 [[files]]
 file = "kubejs/server_scripts/weapon_forge.js"
-hash = "fc2af4008d9f0edc6eb3a82c02d863bd8ca5c7cc915aabbb2d8ec68a1dfad6ce"
+hash = "a9a6ff204b8b6cb00d0b09de3da55b68e9bf03b7c373beba5d5f61b5c9d1e6fd"
 
 [[files]]
 file = "kubejs/server_scripts/world_boss.js"
-hash = "7d0340d2ecdf75de7c4b14eefc848f9427289ae6968954fb4399c7dfb38fd9b0"
+hash = "468b69daa1bf23954799462436670adc11fd7fad82e09314ee8cc565ceb08bb6"
 
 [[files]]
 file = "kubejs/startup_scripts/register_items.js"
@@ -729,6 +753,11 @@ metafile = true
 [[files]]
 file = "mods/bettercombat-forge-1.9.0+1.20.1.pw.toml"
 hash = "e6349263a5867de3434a5dc920f24b66cc621be4aff19317e7e16e2fe5f0cd9c"
+metafile = true
+
+[[files]]
+file = "mods/BetterPingDisplay-1.20.1-1.1.pw.toml"
+hash = "0e07d982f9f7d67411f18da969252985b5643228ca58b76acba5b37b1e794a47"
 metafile = true
 
 [[files]]
@@ -925,4 +954,4 @@ metafile = true
 
 [[files]]
 file = "servers.dat"
-hash = "4110a7f7bb48130420aa404d849a1e7c976696821d233cf1efb2466003b2a92d"
+hash = "01b15d9437580a17aa6faf5cc9da4fa0a28756da91b98eef062224815ed00f5a"

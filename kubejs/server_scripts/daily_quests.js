@@ -421,6 +421,8 @@ function claimDailyContract(player, questIndex) {
     // Marca como concluído e persiste em disco
     prof.completed.push(quest.id);
     saveDailyState();
+    if (global.chronicleFirst) global.chronicleFirst('arauto_quest', player.name.string, `Concluiu o 1o contrato do Arauto (${quest.title})!`);
+    if (global.chronicleEvent) global.chronicleEvent('quest', `${player.name.string} concluiu o contrato "${quest.title}".`);
 
     // Entrega recompensas
     if (quest.rewardIron > 0) {
@@ -428,6 +430,9 @@ function claimDailyContract(player, questIndex) {
     }
     if (quest.rewardGold > 0) {
         player.give(Item.of('lightmanscurrency:coin_gold', quest.rewardGold));
+    }
+    if (global.econMint && (quest.rewardIron > 0 || quest.rewardGold > 0)) {
+        global.econMint('daily_quests', (quest.rewardGold * 10) + quest.rewardIron, player);
     }
     if (quest.rewardTokens > 0) {
         player.give(Item.of('kubejs:token_gladiador', quest.rewardTokens));

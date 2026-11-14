@@ -462,6 +462,8 @@ EntityEvents.hurt(event => {
                 winner.tell('§6§m----------------------------------------');
 
                 recordDuelResult(winner, victim, goldBet);
+                if (global.chronicleFirst) global.chronicleFirst('arena_duel', winner.name.string, `Venceu o 1o duelo oficial da Arena contra ${victim.name.string}!`);
+                if (global.chronicleEvent) global.chronicleEvent('arena', `${winner.name.string} venceu ${victim.name.string} na Arena${goldBet > 0 ? ` (aposta: ${goldBet} Ouro)` : ''}.`);
 
                 let winBroadcast = goldBet > 0
                     ? `§6[Coliseu] §e§l${winner.name.string} §fvenceu §c${victim.name.string} §fe levou o pote de §6${goldBet * 2} Moedas de Ouro§f!`

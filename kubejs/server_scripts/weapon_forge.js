@@ -266,6 +266,7 @@ function forgeEquipment(player, server) {
             remGold -= take;
         }
     });
+    if (global.econSink && requiredGold > 0) global.econSink('weapon_forge', requiredGold * 10, player);
 
     // Consome Emblemas
     let remTokens = totalTokens;
@@ -327,6 +328,8 @@ function forgeEquipment(player, server) {
     item.nbt = item.nbt || {};
     item.nbt.putInt('ForgeTier', newTier);
     item.nbt.putString('ForgeElement', elemKey);
+    if (global.chronicleFirst) global.chronicleFirst(`forge_t${newTier}`, player.name.string, `Forjou a 1a arma Tier ${newTier} (${elemKey}) do reino!`);
+    if (global.chronicleEvent) global.chronicleEvent('forge', `${player.name.string} consagrou ${item.displayName.string} para Tier ${newTier} (${elemKey}).`);
 
     let displayTag = item.nbt.getCompound('display');
     let tagList = Utils.newList();

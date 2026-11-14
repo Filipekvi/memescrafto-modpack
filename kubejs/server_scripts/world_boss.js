@@ -94,6 +94,7 @@ function consumeGoldCoinsWb(player, amount) {
             if (remaining <= 0) break;
         }
     }
+    if (global.econSink && amount > 0) global.econSink('world_boss_summon', amount * 10, player);
 }
 
 function findBossEntity(server) {
@@ -409,6 +410,7 @@ EntityEvents.death(event => {
         participants.forEach(pt => {
             let p = pt.player;
             p.give(Item.of('lightmanscurrency:coin_gold', goldPerPlayer));
+            if (global.econMint) global.econMint('world_boss', goldPerPlayer * 10, p);
             p.give(Item.of('kubejs:token_gladiador', 3));
             let randomCat = CATALYST_POOL[Math.floor(Math.random() * CATALYST_POOL.length)];
             p.give(Item.of(randomCat, 1));
@@ -417,12 +419,15 @@ EntityEvents.death(event => {
     } else {
         // Fallback: se nenhum jogador estiver presente, dropa o espólio básico no chão
         server.runCommandSilent(`summon minecraft:item ${bx} ${by + 1} ${bz} {Item:{id:"lightmanscurrency:coin_gold",Count:30b}}`);
+        if (global.econMint) global.econMint('world_boss', 300, null);
         server.runCommandSilent(`summon minecraft:item ${bx} ${by + 1} ${bz} {Item:{id:"${cat1}",Count:1b}}`);
         server.runCommandSilent(`summon minecraft:item ${bx} ${by + 1} ${bz} {Item:{id:"${cat2}",Count:1b}}`);
     }
 
     // Limpa o rastreador de dano da batalha
     bossDamageTracker = {};
+    if (global.chronicleFirst) global.chronicleFirst('world_boss', killerName, `Deu o golpe final no 1o Tita Forjador dos Antigos (${participants.length} guerreiros)!`);
+    if (global.chronicleEvent) global.chronicleEvent('world_boss', `Tita Forjador abatido por ${killerName} (${participants.length} participantes).`);
 
     server.tell('§6§l==================================================');
     server.tell('§e§l🏆 [WORLDBOSS DERROTADO!] 🏆');

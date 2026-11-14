@@ -16,7 +16,10 @@ const ALL_CATALYSTS = [
 ];
 
 // 1. Injeção de Espólios em Baús de Masmorras (Com taxas extremamente baixas para Catalisadores e Emblemas)
+const rolledLootChests = {};
+
 BlockEvents.rightClicked(event => {
+    if (event.hand != 'MAIN_HAND') return;
     let p = event.player;
     let b = event.block;
     if (!p || !p.isPlayer() || !b) return;
@@ -27,43 +30,70 @@ BlockEvents.rightClicked(event => {
     let beData = b.entityData;
     if (!beData || !beData.contains('LootTable')) return;
 
+    let forgeData = beData.getCompound('ForgeData');
+    if (forgeData && forgeData.getBoolean('mc_loot_rolled')) return;
+
     let lootTableStr = String(beData.getString('LootTable'));
     // Ignora caso não seja baú de estrutura/masmorra
     if (!lootTableStr) return;
 
-    // Sorteio de Moedas e Relíquias quando o baú de estrutura é aberto pela primeira vez
-    let rollCopper = Math.random();
-    let rollGold   = Math.random();
-    let rollCat    = Math.random();
-    let rollToken  = Math.random();
+    let posKey = `${b.level.dimension}:${b.x},${b.y},${b.z}`;
+    if (rolledLootChests[posKey]) return;
 
-    // 55% de chance: Moedas de Cobre e Ferro
-    if (rollCopper < 0.55) {
-        let copperAmt = 2 + Math.floor(Math.random() * 6);
-        let ironAmt   = 1 + Math.floor(Math.random() * 2);
-        b.popItem(Item.of('lightmanscurrency:coin_copper', copperAmt));
-        b.popItem(Item.of('lightmanscurrency:coin_iron', ironAmt));
-    }
+    // Aguarda 1 tick para confirmar que o baú realmente abriu (o vanilla remove 'LootTable' ao abrir).
+    // Se o baú estiver obstruído ou bloqueado, 'LootTable' permanece e nada é dropado.
+    event.server.scheduleInTicks(1, () => {
+        if (rolledLootChests[posKey]) return;
+        let checkBlock = b.level.getBlock(b.x, b.y, b.z);
+        if (!checkBlock) return;
+        let checkId = checkBlock.id;
+        if (checkId !== 'minecraft:chest' && checkId !== 'minecraft:trapped_chest' && checkId !== 'minecraft:barrel') return;
 
-    // 10% de chance: 1 Moeda de Ouro
-    if (rollGold < 0.10) {
-        b.popItem(Item.of('lightmanscurrency:coin_gold', 1));
-    }
+        let afterData = checkBlock.entityData;
+        if (!afterData) return;
+        let afterForgeData = afterData.getCompound('ForgeData');
+        if (afterForgeData && afterForgeData.getBoolean('mc_loot_rolled')) return;
+        if (afterData.contains('LootTable')) return;
 
-    // 1.5% de chance (Extremamente Baixo): 1 Catalisador Elemental aleatório
-    if (rollCat < 0.015) {
-        let randomCat = ALL_CATALYSTS[Math.floor(Math.random() * ALL_CATALYSTS.length)];
-        b.popItem(Item.of(randomCat, 1));
-        p.tell('§d§l✨ [Relíquia de Masmorra] §fVocê encontrou um raro §dCatalisador Elemental §fno baú antigo!');
-        p.playSound('minecraft:block.amethyst_block.chime', 1.0, 1.2);
-    }
+        rolledLootChests[posKey] = true;
+        checkBlock.mergeEntityData({ ForgeData: { mc_loot_rolled: 1 } });
 
-    // 0.5% de chance (Raríssimo): 1 Emblema do Gladiador
-    if (rollToken < 0.005) {
-        b.popItem(Item.of('kubejs:token_gladiador', 1));
-        p.tell('§6§l🏆 [Tesouro Ancestral] §fVocê desenterrou um §6Emblema do Gladiador §fperdido nas profundezas!');
-        p.playSound('minecraft:ui.toast.challenge_complete', 1.0, 1.2);
-    }
+        // Sorteio de Moedas e Relíquias quando o baú de estrutura é aberto pela primeira vez
+        let rollCopper = Math.random();
+        let rollGold   = Math.random();
+        let rollCat    = Math.random();
+        let rollToken  = Math.random();
+
+        // 55% de chance: Moedas de Cobre e Ferro
+        if (rollCopper < 0.55) {
+            let copperAmt = 2 + Math.floor(Math.random() * 6);
+            let ironAmt   = 1 + Math.floor(Math.random() * 2);
+            checkBlock.popItem(Item.of('lightmanscurrency:coin_copper', copperAmt));
+            checkBlock.popItem(Item.of('lightmanscurrency:coin_iron', ironAmt));
+            if (global.econMint) global.econMint('dungeon_loot', ironAmt + (copperAmt * 0.1), p);
+        }
+
+        // 10% de chance: 1 Moeda de Ouro
+        if (rollGold < 0.10) {
+            checkBlock.popItem(Item.of('lightmanscurrency:coin_gold', 1));
+            if (global.econMint) global.econMint('dungeon_loot', 10, p);
+        }
+
+        // 1.5% de chance (Extremamente Baixo): 1 Catalisador Elemental aleatório
+        if (rollCat < 0.015) {
+            let randomCat = ALL_CATALYSTS[Math.floor(Math.random() * ALL_CATALYSTS.length)];
+            checkBlock.popItem(Item.of(randomCat, 1));
+            p.tell('§d§l✨ [Relíquia de Masmorra] §fVocê encontrou um raro §dCatalisador Elemental §fno baú antigo!');
+            p.playSound('minecraft:block.amethyst_block.chime', 1.0, 1.2);
+        }
+
+        // 0.5% de chance (Raríssimo): 1 Emblema do Gladiador
+        if (rollToken < 0.005) {
+            checkBlock.popItem(Item.of('kubejs:token_gladiador', 1));
+            p.tell('§6§l🏆 [Tesouro Ancestral] §fVocê desenterrou um §6Emblema do Gladiador §fperdido nas profundezas!');
+            p.playSound('minecraft:ui.toast.challenge_complete', 1.0, 1.2);
+        }
+    });
 });
 
 const SERVER_EXCLUSIVE_RECIPES = [
@@ -143,6 +173,7 @@ PlayerEvents.loggedIn(event => {
             p.give(Item.of('ftbquests:book', 1));
         } catch (e) {}
         p.give(Item.of('lightmanscurrency:coin_copper', 10));
+        if (global.econMint) global.econMint('onboarding', 1.0, p);
         p.give(Item.of('minecraft:bread', 5));
 
         p.server.runCommandSilent(`title ${p.name.string} title {"text":"§6§lMEMESCRAFTO RPG"}`);
