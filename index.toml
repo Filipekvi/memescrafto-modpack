@@ -330,7 +330,7 @@ hash = "a4c652cafa7dea324e5f5cf3b1df46a84e54b6d4f877195857bce55a559c1cfd"
 
 [[files]]
 file = "config/xaero/minimap/profiles/default.cfg"
-hash = "f1ff62b22cfc97486d00e8bd3367a3207f0a8da235e7b365c5aa2a54e3f8dc25"
+hash = "d3706c413d242091f4cd34e518f0bee08871e49c69183c3c9955afc333c680ff"
 
 [[files]]
 file = "config/xaero/minimap/profiles/info_display_config/default.cfg.txt"
@@ -338,7 +338,7 @@ hash = "184e654fa1fc8ad09943c97c4e65ab78acb5b3cfca22417a831513d1b6d9bbc6"
 
 [[files]]
 file = "config/xaero/minimap/server_profiles/default.cfg"
-hash = "d438aea41ca41e93697e059f523686935c0add482f6abe96b532bbf10c6ed80a"
+hash = "aae69c1b8c92d2b70b8b7a6c48ae5003994e8df08e7a4df223732e8a3868252d"
 
 [[files]]
 file = "config/xaero/world-map/client.cfg"
@@ -350,11 +350,11 @@ hash = "0c229eb0daf85bd09af51f21eeeb99497a3bd50a825d5ab1ca695fb21bf6cf9d"
 
 [[files]]
 file = "config/xaero/world-map/profiles/default.cfg"
-hash = "5422abf9c83fedef6509144293fad20f588d4bb6ce0cf1af78cbcd2bcd0d2ccf"
+hash = "745ce77a4e965a46a80a898c4254baf632f6b8810eecce24ee4b1cafb7d2cd23"
 
 [[files]]
 file = "config/xaero/world-map/server_profiles/default.cfg"
-hash = "d438aea41ca41e93697e059f523686935c0add482f6abe96b532bbf10c6ed80a"
+hash = "672f18bd6260c4645b448afbb942dec792303b111c12c8b311f4ebb443a253c0"
 
 [[files]]
 file = "config/xaerohud.txt"
@@ -670,7 +670,7 @@ hash = "63f84a67bd05cd9960db2f6529e608e68552d5d0627e94bc5be39647e414d801"
 
 [[files]]
 file = "kubejs/server_scripts/chat_titles.js"
-hash = "2c74fcb907dbacfeaa339e732dbde46f7627c2e2d9322ee37a2de1445fe7d620"
+hash = "7eb69cf2d41ed15cadd06a033682a11b372b5902cefe301595ba301e44299321"
 
 [[files]]
 file = "kubejs/server_scripts/chronicle_log.js"

@@ -123,8 +123,8 @@ function syncPlayerTabTeam(server, p) {
 
     let teamId = 't_' + uuid.replace(/-/g, '').substring(0, 14);
     server.runCommandSilent(`team add ${teamId}`);
-    server.runCommandSilent(`team modify ${teamId} prefix ${JSON.stringify(prefix)}`);
-    server.runCommandSilent(`team modify ${teamId} suffix ${JSON.stringify(suffix)}`);
+    server.runCommandSilent(`team modify ${teamId} prefix ${JSON.stringify({ text: prefix })}`);
+    server.runCommandSilent(`team modify ${teamId} suffix ${JSON.stringify({ text: suffix })}`);
     server.runCommandSilent(`team join ${teamId} ${p.name.string}`);
 }
 
