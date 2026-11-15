@@ -234,7 +234,7 @@ hash = "02cd35fbcc371cf63303ae1264ad9f4613b3f73ace93417af825baf7d3ac7baf"
 
 [[files]]
 file = "config/oculus.properties"
-hash = "930ddf7d2f26cb08d58e732bd07ea364cb227d4cc7e2f284222dfb3e4eb6f055"
+hash = "21c0f05fa543a17a442d18d13796d03e4be268211cdf26f0fb0323163ccb05ad"
 
 [[files]]
 file = "config/sidebar_buttons.json"
@@ -954,4 +954,4 @@ metafile = true
 
 [[files]]
 file = "servers.dat"
-hash = "01b15d9437580a17aa6faf5cc9da4fa0a28756da91b98eef062224815ed00f5a"
+hash = "4110a7f7bb48130420aa404d849a1e7c976696821d233cf1efb2466003b2a92d"
