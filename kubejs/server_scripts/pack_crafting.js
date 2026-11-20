@@ -392,6 +392,12 @@ global.playerHasCargoPack = playerHasCargoPack;
 // Rastreia a última dimensão do jogador para neutralizar o atalho 8x do Nether
 let lastPlayerDimension = {};
 
+const AIRCRAFT_MAX_CARGO = {
+    'immersive_aircraft:airship': 3,
+    'immersive_aircraft:cargo_airship': 6,
+    'immersive_aircraft:warship': 12
+};
+
 let cargoTickCounter = 0;
 ServerEvents.tick(event => {
     cargoTickCounter++;
@@ -445,11 +451,6 @@ ServerEvents.tick(event => {
         let packCount = countPlayerCargoPacks(p);
         let isRiding = p.isPassenger() || (p.vehicle != null);
         if (isRiding && p.vehicle && String(p.vehicle.type).startsWith('immersive_aircraft:')) {
-            const AIRCRAFT_MAX_CARGO = {
-                'immersive_aircraft:airship': 3,
-                'immersive_aircraft:cargo_airship': 6,
-                'immersive_aircraft:warship': 12
-            };
             let vType = String(p.vehicle.type);
             let maxPacks = AIRCRAFT_MAX_CARGO[vType] !== undefined ? AIRCRAFT_MAX_CARGO[vType] : 3;
             let vehiclePackCount = 0;
