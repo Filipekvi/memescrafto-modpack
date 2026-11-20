@@ -294,3 +294,10 @@ EntityEvents.spawned('easy_npc:humanoid', event => {
         global.syncNpcDialog(event.entity, event.server);
     }
 });
+
+ItemEvents.entityInteracted(event => {
+    if (event.target && event.target.type === 'easy_npc:humanoid' && event.server && global.syncNpcDialog) {
+        global.syncNpcDialog(event.target, event.server);
+    }
+});
+

@@ -718,7 +718,7 @@ hash = "773c43df3ee093fbf05825ac4f18e05c2daac0b8fa4e741ea2981c5a915f6b82"
 
 [[files]]
 file = "kubejs/server_scripts/npc_interactions.js"
-hash = "40e3b872714bd22f2f7c0f362fd190187709521b1a9af718a4595d628e0540f4"
+hash = "45416835da95167e78d93ab0510c414173b4a261d146f3406fd04f90e0ff4581"
 
 [[files]]
 file = "kubejs/server_scripts/pack_crafting.js"
