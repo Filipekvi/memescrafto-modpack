@@ -213,6 +213,41 @@ function creditVillageTreasury(v, ironAmount) {
     return { paidDebt: paidDebt, netCredited: rem };
 }
 
+function deductVillageUpkeep(v, upkeepIron, maxDebtIron) {
+    if (!v || upkeepIron <= 0) return null;
+    let treasuryTotalIron = ((v.taxGold || 0) * 10) + (v.taxIron || 0);
+    let afterUpkeep = treasuryTotalIron - upkeepIron;
+    let demotedMsg = null;
+
+    if (afterUpkeep >= 0) {
+        v.taxGold = Math.floor(afterUpkeep / 10);
+        v.taxIron = afterUpkeep % 10;
+        v.taxDebtIron = 0;
+        v.debtStrikes = 0;
+    } else {
+        v.taxGold = 0;
+        v.taxIron = 0;
+        let addedDebt = -afterUpkeep;
+        v.taxDebtIron = Math.min(maxDebtIron, (v.taxDebtIron || 0) + addedDebt);
+
+        if (v.taxDebtIron >= maxDebtIron) {
+            v.debtStrikes = (v.debtStrikes || 0) + 1;
+            let curTier = Number(v.prosperityTier) || 0;
+            if (v.debtStrikes >= 2 && curTier > 0) {
+                v.prosperityTier = curTier - 1;
+                v.debtStrikes = 0;
+                let demInfo = getProsperityInfo(v);
+                v.taxDebtIron = Math.min(v.taxDebtIron, demInfo.maxDebtIron);
+                demotedMsg = `§c§l[⚠ REBAIXAMENTO POR DÍVIDA] §e${v.name} §catingiu o limite de dívida por 2 censos seguidos e foi rebaixada para ${demInfo.name}§c!`;
+                if (global.chronicleEvent) global.chronicleEvent('village', `Vila "${v.name}" foi rebaixada para ${demInfo.name} por insolvência.`);
+            }
+        } else {
+            v.debtStrikes = 0;
+        }
+    }
+    return demotedMsg;
+}
+
 function getVillageCenterCoords(v, level) {
     if (!v) return { x: 0, y: 64, z: 0 };
     return { x: v.x, y: (v.y || 64), z: v.z };
@@ -1955,36 +1990,7 @@ ServerEvents.tick(event => {
 
             // Deduz Manutenção (Upkeep: Guardas + 10% do custo dos NPCs contratados)
             let upkeep = calculateVillageUpkeep(v);
-            let treasuryTotalIron = ((v.taxGold || 0) * 10) + (v.taxIron || 0);
-            let afterUpkeep = treasuryTotalIron - upkeep.totalIron;
-            let demotedMsg = null;
-
-            if (afterUpkeep >= 0) {
-                v.taxGold = Math.floor(afterUpkeep / 10);
-                v.taxIron = afterUpkeep % 10;
-                v.taxDebtIron = 0;
-                v.debtStrikes = 0;
-            } else {
-                v.taxGold = 0;
-                v.taxIron = 0;
-                let addedDebt = -afterUpkeep;
-                v.taxDebtIron = Math.min(upkeep.maxDebtIron, (v.taxDebtIron || 0) + addedDebt);
-
-                if (v.taxDebtIron >= upkeep.maxDebtIron) {
-                    v.debtStrikes = (v.debtStrikes || 0) + 1;
-                    let curTier = Number(v.prosperityTier) || 0;
-                    if (v.debtStrikes >= 2 && curTier > 0) {
-                        v.prosperityTier = curTier - 1;
-                        v.debtStrikes = 0;
-                        let demInfo = getProsperityInfo(v);
-                        v.taxDebtIron = Math.min(v.taxDebtIron, demInfo.maxDebtIron);
-                        demotedMsg = `§c§l[⚠ REBAIXAMENTO POR DÍVIDA] §e${v.name} §catingiu o limite de dívida por 2 censos seguidos e foi rebaixada para ${demInfo.name}§c!`;
-                        if (global.chronicleEvent) global.chronicleEvent('village', `Vila "${v.name}" foi rebaixada para ${demInfo.name} por insolvência.`);
-                    }
-                } else {
-                    v.debtStrikes = 0;
-                }
-            }
+            let demotedMsg = deductVillageUpkeep(v, upkeep.totalIron, upkeep.maxDebtIron);
 
             v.lastCensusAt = Date.now();
             saveVillages();
@@ -3047,8 +3053,13 @@ function applyOfflineCensusCatchup() {
             if (offlineIron > 0) {
                 creditVillageTreasury(v, offlineIron);
                 if (global.econMint) global.econMint('village_census_offline', offlineIron, null);
-                console.info(`[Soberania] Censo offline (50%): ${v.name} recebeu +${offlineIron} Ferro (${cycles} ciclos / ~${(cycles * 0.5).toFixed(1)}h).`);
             }
+            let upkeep = calculateVillageUpkeep(v);
+            let offlineUpkeep = Math.floor(upkeep.totalIron * cycles * 0.5);
+            if (offlineUpkeep > 0) {
+                deductVillageUpkeep(v, offlineUpkeep, upkeep.maxDebtIron);
+            }
+            console.info(`[Soberania] Censo offline (50%): ${v.name} +${offlineIron} Ferro / -${offlineUpkeep} Manutenção (${cycles} ciclos / ~${(cycles * 0.5).toFixed(1)}h).`);
             v.lastCensusAt = now;
             changed = true;
         } else if (!v.lastCensusAt) {
