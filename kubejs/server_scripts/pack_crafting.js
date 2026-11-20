@@ -196,6 +196,33 @@ ServerEvents.recipes(event => {
         P: 'minecraft:ender_pearl',
         E: 'minecraft:end_stone'
     }).id('kubejs:fardo_end');
+
+    // --- IMMERSIVE AIRCRAFT: IMERSÃO MEDIEVAL & PROGRESSÃO ---
+    const bannedAircraftItems = [
+        'immersive_aircraft:biplane',
+        'immersive_aircraft:gyrodyne',
+        'immersive_aircraft:quadrocopter',
+        'immersive_aircraft:bamboo_hopper',
+        'immersive_aircraft:warship',
+        'immersive_aircraft:rotary_cannon',
+        'immersive_aircraft:bomb_bay'
+    ];
+    bannedAircraftItems.forEach(itemId => {
+        event.remove({ output: itemId });
+    });
+
+    // Exige Bloco de Ouro na receita base do Dirigível (gating de mid/late-game para Airship e Cargo Airship)
+    event.remove({ output: 'immersive_aircraft:airship' });
+    event.shaped('immersive_aircraft:airship', [
+        'SSS',
+        'SGS',
+        'HHE'
+    ], {
+        S: 'immersive_aircraft:sail',
+        G: 'minecraft:gold_block',
+        H: 'immersive_aircraft:hull',
+        E: 'immersive_aircraft:engine'
+    }).id('kubejs:gated_airship');
 });
 
 // Cooldown de Rumores de Taverna por jogador (5 minutos)
@@ -216,18 +243,72 @@ const PACK_REGION_NAMES = {
     'kubejs:fardo_end':       'o Vazio Astral do End'
 };
 
+let SbBackpackStorage = null;
+try {
+    SbBackpackStorage = Java.loadClass('net.p3pp3rf1y.sophisticatedbackpacks.backpack.BackpackStorage');
+} catch (e) {}
+
+function countCargoPacksInNbtList(itemsList) {
+    if (!itemsList) return 0;
+    let total = 0;
+    try {
+        let len = typeof itemsList.size === 'function' ? itemsList.size() : (itemsList.length || 0);
+        for (let i = 0; i < len; i++) {
+            let entry = itemsList.get(i);
+            if (!entry) continue;
+            let eid = entry.contains('id') ? String(entry.getString('id')) : '';
+            if (eid.startsWith('kubejs:fardo_')) {
+                let cnt = entry.contains('Count') ? entry.getInt('Count') : 1;
+                total += Math.max(1, cnt);
+            }
+            if (entry.contains('tag')) {
+                let tag = entry.getCompound('tag');
+                if (tag && tag.contains('BlockEntityTag')) {
+                    let bet = tag.getCompound('BlockEntityTag');
+                    if (bet && bet.contains('Items')) {
+                        total += countCargoPacksInNbtList(bet.getList('Items', 10));
+                    }
+                }
+            }
+        }
+    } catch (e) {}
+    return total;
+}
+
 function countPlayerCargoPacks(player) {
     if (!player || !player.inventory) return 0;
     let total = 0;
     try {
         player.inventory.allItems.forEach(item => {
-            if (item && item.id && item.id.startsWith('kubejs:fardo_')) {
-                total += item.count;
+            if (!item || !item.id) return;
+            if (item.id.startsWith('kubejs:fardo_')) {
+                total += Math.max(1, item.count || 1);
+                return;
+            }
+            if (!item.nbt) return;
+            if (item.nbt.contains('BlockEntityTag')) {
+                let bet = item.nbt.getCompound('BlockEntityTag');
+                if (bet && bet.contains('Items')) {
+                    total += countCargoPacksInNbtList(bet.getList('Items', 10));
+                }
+            }
+            if (SbBackpackStorage && item.nbt.contains('contentsUuid')) {
+                try {
+                    let bpUuid = item.nbt.getUUID('contentsUuid');
+                    let contents = SbBackpackStorage.get().getOrCreateBackpackContents(bpUuid);
+                    if (contents && contents.contains('inventory')) {
+                        let invTag = contents.getCompound('inventory');
+                        if (invTag && invTag.contains('Items')) {
+                            total += countCargoPacksInNbtList(invTag.getList('Items', 10));
+                        }
+                    }
+                } catch (eBp) {}
             }
         });
     } catch (e) {}
     return total;
 }
+global.countPlayerCargoPacks = countPlayerCargoPacks;
 
 // Ao fabricar um fardo, carimba as coordenadas de origem e verifica se é Autêntico ou Sintético
 ItemEvents.crafted(event => {
@@ -300,19 +381,7 @@ ItemEvents.crafted(event => {
 // -------------------------------------------------------------------------
 
 function playerHasCargoPack(player) {
-    if (!player || !player.inventory) return false;
-    let found = false;
-    try {
-        player.inventory.allItems.forEach(item => {
-            if (!item || !item.id) return;
-            if (item.id.startsWith('kubejs:fardo_')) {
-                found = true;
-            } else if (item.nbt && item.nbt.toString().includes('kubejs:fardo_')) {
-                found = true;
-            }
-        });
-    } catch (e) {}
-    return found;
+    return countPlayerCargoPacks(player) > 0;
 }
 global.playerHasCargoPack = playerHasCargoPack;
 
@@ -368,16 +437,38 @@ ServerEvents.tick(event => {
             }
         } catch (e) {}
 
-        // 3. Aplica Lentidão Física a pé ao transportar fardos
-        if (playerHasCargoPack(p)) {
-            let isRiding = p.isPassenger() || (p.vehicle != null);
-            if (!isRiding) {
-                try {
-                    p.potionEffects.add('minecraft:slowness', 40, 1, false, false);
-                } catch (e) {
-                    server.runCommandSilent(`effect give ${p.name.string} minecraft:slowness 2 1 true`);
+        // 3. Aplica Lentidão Física proporcional à quantidade de fardos (inventário + mochilas/shulkers)
+        let packCount = countPlayerCargoPacks(p);
+        let isRiding = p.isPassenger() || (p.vehicle != null);
+        if (isRiding && p.vehicle && String(p.vehicle.type).startsWith('immersive_aircraft:')) {
+            let vehiclePackCount = 0;
+            try {
+                if (p.vehicle.nbt && p.vehicle.nbt.contains('inventory')) {
+                    let vInv = p.vehicle.nbt.getCompound('inventory');
+                    if (vInv && vInv.contains('Items')) {
+                        vehiclePackCount = countCargoPacksInNbtList(vInv.getList('Items', 10));
+                    }
+                } else if (p.vehicle.nbt && p.vehicle.nbt.contains('Items')) {
+                    vehiclePackCount = countCargoPacksInNbtList(p.vehicle.nbt.getList('Items', 10));
                 }
-                server.runCommandSilent(`title ${p.name.string} actionbar {"text":"§6⚖ [Carga Pesada] §fTransportando Fardo a pé. Use montarias, carroças ou navios!"}`);
+            } catch (eVeh) {}
+            if (packCount + vehiclePackCount > 2) {
+                p.stopRiding();
+                isRiding = false;
+                p.tell('§c[Rotas Mercantis] §fCarga pesada demais para voar (máximo de §e2 fardos§f)! Use carroças ou navios.');
+                p.playSound('minecraft:entity.villager.no', 1.0, 0.8);
+            }
+        }
+        if (packCount > 0) {
+            if (!isRiding) {
+                let slowAmp = Math.min(4, Math.floor(packCount / 2));
+                let roman = ['I', 'II', 'III', 'IV', 'V'][slowAmp] || 'V';
+                try {
+                    p.potionEffects.add('minecraft:slowness', 40, slowAmp, false, false);
+                } catch (e) {
+                    server.runCommandSilent(`effect give ${p.name.string} minecraft:slowness 2 ${slowAmp} true`);
+                }
+                server.runCommandSilent(`title ${p.name.string} actionbar {"text":"§6⚖ [Carga Pesada: ${packCount}x Fardo(s)] §fLentidão ${roman}! Use montarias, carroças ou navios!"}`);
             }
         }
     });

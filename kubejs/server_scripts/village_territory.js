@@ -150,8 +150,8 @@ function getPartyOwnedVillage(partyName, playerUUID) {
 function getProsperityInfo(v) {
     let tier = 0;
     if (v) {
-        if (typeof v.prosperityTier === 'number') {
-            tier = v.prosperityTier;
+        if (v.prosperityTier !== undefined && v.prosperityTier !== null && !isNaN(Number(v.prosperityTier))) {
+            tier = Number(v.prosperityTier);
         } else {
             // Migração única para vilas antigas baseadas em saldo de cofre
             let gold = v.taxGold || 0;
@@ -336,6 +336,13 @@ function claimVillage(player, server) {
 // ----------------------------------------------------
 // HANDLERS DE ITENS DE SOBERANIA (MARCO, CONTRATOS, CLARIM)
 // ----------------------------------------------------
+function consumeHeldItem(p, item) {
+    if (!p || !item) return;
+    let handStack = (p.mainHandItem && p.mainHandItem.id === item.id) ? p.mainHandItem : ((p.offHandItem && p.offHandItem.id === item.id) ? p.offHandItem : item);
+    if (typeof handStack.shrink === 'function') handStack.shrink(1);
+    else handStack.count--;
+}
+
 let playerActionDebounce = {};
 
 function handleMarcoFundacao(p, item) {
@@ -372,7 +379,7 @@ function handleMarcoFundacao(p, item) {
 
         let res = claimVillage(p, p.server);
         if (res === 1) {
-            item.count--;
+            consumeHeldItem(p, item);
             let x = p.x.toFixed(2);
             let y = p.y.toFixed(2);
             let z = p.z.toFixed(2);
@@ -402,6 +409,15 @@ function getNpcContractType(item) {
 }
 
 function createNpcContractItem(npcType, displayName) {
+    if (npcType === 'fazendeiro') {
+        return Item.of('kubejs:contrato_armazem', 1, {
+            npcContract: 'fazendeiro',
+            display: {
+                Name: '{"text":"§a📜 Contrato: Feirante Agrícola","italic":false}',
+                Lore: ['{"text":"Clique direito no chão da sua vila para posicionar o Feirante.","color":"gray","italic":false}']
+            }
+        });
+    }
     return Item.of(`kubejs:contrato_${npcType}`, 1);
 }
 
@@ -435,7 +451,7 @@ function handleContratoNpc(p, item) {
         if (global.getNpcNbt) {
             let nbt = global.getNpcNbt(npcType);
             if (nbt) {
-                item.count--;
+                consumeHeldItem(p, item);
                 p.server.runCommandSilent(`summon easy_npc:humanoid ${x} ${y} ${z} ${nbt}`);
                 v.hiredNpcs = v.hiredNpcs || [];
                 if (v.hiredNpcs.indexOf(npcType) === -1) v.hiredNpcs.push(npcType);
@@ -468,44 +484,56 @@ function handleClarimCerco(p, item) {
 
 // Disparo tanto no clique do item (no ar) quanto no clique de bloco (no chão)
 ItemEvents.firstRightClicked(event => {
+    if (event.hand != 'MAIN_HAND') return;
     let p = event.player;
     let item = event.item;
     if (!p || !item) return;
 
     if (item.id === 'kubejs:marco_fundacao') {
         handleMarcoFundacao(p, item);
+        event.cancel();
     } else if (isNpcContractItem(item)) {
         handleContratoNpc(p, item);
+        event.cancel();
     } else if (item.id === 'kubejs:clarim_cerco') {
         handleClarimCerco(p, item);
+        event.cancel();
     }
 });
 
 BlockEvents.rightClicked(event => {
+    if (event.hand != 'MAIN_HAND') return;
     let p = event.player;
     let item = event.item;
     if (!p || !item) return;
 
     if (item.id === 'kubejs:marco_fundacao') {
         handleMarcoFundacao(p, item);
+        event.cancel();
     } else if (isNpcContractItem(item)) {
         handleContratoNpc(p, item);
+        event.cancel();
     } else if (item.id === 'kubejs:clarim_cerco') {
         handleClarimCerco(p, item);
+        event.cancel();
     }
 });
 
 ItemEvents.rightClicked(event => {
+    if (event.hand != 'MAIN_HAND') return;
     let p = event.player;
     let item = event.item;
     if (!p || !item) return;
 
     if (item.id === 'kubejs:marco_fundacao') {
         handleMarcoFundacao(p, item);
+        event.cancel();
     } else if (isNpcContractItem(item)) {
         handleContratoNpc(p, item);
+        event.cancel();
     } else if (item.id === 'kubejs:clarim_cerco') {
         handleClarimCerco(p, item);
+        event.cancel();
     }
 });
 
@@ -856,6 +884,8 @@ function collectTaxes(player, amountStr) {
         v.taxIron = 0;
     }
 
+    let withdrawnPts = (withdrawGold * 10) + Math.floor(withdrawIron);
+    v.economicPoints = Math.max(0, (v.economicPoints || 0) - withdrawnPts);
     saveVillages();
 
     if (withdrawGold > 0) player.give(Item.of('lightmanscurrency:coin_gold', withdrawGold));
@@ -1129,11 +1159,11 @@ function hireVillageNpc(player, npcType, server) {
     let reqs = {
         armazem:    { name: 'Armazém Geral', villagers: 8,  goldCost: 5,  tier: 0 },
         fazendeiro: { name: 'Feirante Agrícola', villagers: 10, goldCost: 8, tier: 0 },
-        guilda:     { name: 'Guilda Mercante', villagers: 12, goldCost: 10, tier: 1 },
+        guilda:     { name: 'Guilda Mercante', villagers: 12, goldCost: 50, tier: 1 },
         intendente: { name: 'Intendente de Guerra', villagers: 14, goldCost: 15, tier: 1 },
         banco:      { name: 'Banqueiro Local', villagers: 18, goldCost: 15, tier: 2 },
         padre:      { name: 'Padre Curandeiro', villagers: 20, goldCost: 12, tier: 2 },
-        ferreiro:   { name: 'Mestre da Forja', villagers: 25, goldCost: 25, tier: 3 }
+        ferreiro:   { name: 'Mestre da Forja', villagers: 25, goldCost: 50, tier: 3 }
     };
 
     let req = reqs[npcType];
@@ -1191,19 +1221,53 @@ function relocateVillageNpc(player, npcType, server) {
     }
 
     // Busca o NPC mais próximo desse tipo e remove
+    let keywordsMap = {
+        armazem: ['armazém', 'armazem'],
+        fazendeiro: ['feirante', 'fazendeiro'],
+        guilda: ['guilda'],
+        intendente: ['intendente'],
+        banco: ['banqueiro', 'banco'],
+        padre: ['padre'],
+        ferreiro: ['armeiro', 'forja', 'ferreiro']
+    };
+    let kws = keywordsMap[npcType] || [String(npcType || '').toLowerCase()];
+
+    let bestEnt = null;
+    let bestDistSq = 12 * 12;
     let entities = player.level.getEntities();
-    let found = false;
     entities.forEach(ent => {
-        if (!found && ent && ent.type === 'easy_npc:humanoid') {
-            let name = ent.name ? ent.name.string : '';
-            let dx = ent.x - player.x;
-            let dz = ent.z - player.z;
-            if (dx * dx + dz * dz <= 10 * 10) {
-                ent.discard();
-                found = true;
+        if (ent && String(ent.type) === 'easy_npc:humanoid') {
+            let n = (ent.customName ? ent.customName.string : (ent.name ? ent.name.string : '')).toLowerCase();
+            let matches = false;
+            for (let i = 0; i < kws.length; i++) {
+                if (n.includes(kws[i])) { matches = true; break; }
+            }
+            if (matches) {
+                let dx = ent.x - player.x;
+                let dy = ent.y - player.y;
+                let dz = ent.z - player.z;
+                let d2 = dx * dx + dy * dy + dz * dz;
+                if (d2 <= bestDistSq) {
+                    bestDistSq = d2;
+                    bestEnt = ent;
+                }
             }
         }
     });
+
+    if (!bestEnt) {
+        player.tell('§c[Soberania] Não encontrei esse profissional por perto para recolher.');
+        return 0;
+    }
+
+    let targetEnt = bestEnt;
+    if (server) {
+        server.scheduleInTicks(1, () => {
+            try { if (targetEnt && targetEnt.alive) targetEnt.discard(); } catch (e) {}
+        });
+    } else {
+        targetEnt.discard();
+    }
 
     let namesMap = {
         armazem: 'Armazém Geral',
@@ -1846,6 +1910,7 @@ ServerEvents.tick(event => {
                 v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
                 v.taxIron = v.taxIron % 10;
             }
+            v.lastCensusAt = Date.now();
             if (global.econMint && totalIron > 0) global.econMint('village_census', totalIron, null);
             saveVillages();
 
@@ -1954,8 +2019,40 @@ let pendingShipPlacers = [];
 
 function isProtectedVehicleType(typeStr) {
     let s = String(typeStr || '');
-    return s.startsWith('smallships:') || s.startsWith('astikorcartsredux:');
+    return s.startsWith('smallships:') || s.startsWith('astikorcartsredux:') || s.startsWith('immersive_aircraft:');
 }
+
+// Zona Aérea Protegida: impede sobrevoar centros de cidades rivais ou cercos ativos em aeronaves
+let airspaceTickCounter = 0;
+ServerEvents.tick(event => {
+    airspaceTickCounter++;
+    if (airspaceTickCounter < 20) return;
+    airspaceTickCounter = 0;
+
+    let server = event.server;
+    if (!server) return;
+    server.playerList.players.forEach(p => {
+        if (!p || !p.alive || !p.isPassenger() || !p.vehicle) return;
+        let vType = String(p.vehicle.type || '');
+        if (!vType.startsWith('immersive_aircraft:')) return;
+
+        let isOp = p.op || (p.hasPermissions && p.hasPermissions(2));
+        if (p.isCreative() && isOp) return;
+
+        let v = getNearestVillage(p.x, p.z, 160);
+        if (!v || !v.ownerUUID || v.ruined || isPlayerAuthorizedInVillage(p, v)) return;
+
+        let dx = p.x - v.x;
+        let dz = p.z - v.z;
+        let distSq = dx * dx + dz * dz;
+        let inSiege = !!activeSieges[v.id];
+        if (inSiege || distSq <= 40 * 40) {
+            p.stopRiding();
+            p.tell(`§c[Soberania Aérea] §fEspaço aéreo protegido de §e${v.partyName}§f! Pouse fora das muralhas.`);
+            p.playSound('minecraft:entity.villager.no', 1.0, 0.8);
+        }
+    });
+});
 
 function recordShipPlacer(p) {
     if (!p) return;
@@ -2406,26 +2503,91 @@ ServerEvents.commandRegistry(event => {
             }))
     );
 
+function stopVillageRaid(server, villageName, player) {
+    if (!server) return 0;
+    let overworld = server.getLevel('minecraft:overworld');
+    if (!overworld) return 0;
+
+    let targetV = null;
+    if (villageName) {
+        let q = String(villageName).toLowerCase();
+        for (let id in claimedVillages) {
+            let v = claimedVillages[id];
+            if (v && v.name && v.name.toLowerCase() === q) {
+                targetV = v;
+                break;
+            }
+        }
+    } else if (player) {
+        targetV = getNearestVillage(player.x, player.z, 160);
+    }
+
+    if (!targetV) {
+        let msg = '§c[Soberania] Vila não encontrada para encerrar raid.';
+        if (player) player.tell(msg);
+        else console.log(msg);
+        return 0;
+    }
+
+    let stopped = false;
+    try {
+        let BlockPos = Java.loadClass('net.minecraft.core.BlockPos');
+        let raid = overworld.getRaidAt(new BlockPos(Math.floor(targetV.x), Math.floor(targetV.y || 66), Math.floor(targetV.z)));
+        if (raid) {
+            let active = typeof raid.isStopped === 'function' ? !raid.isStopped() : true;
+            if (active && typeof raid.stop === 'function') {
+                raid.stop();
+                stopped = true;
+            }
+        }
+    } catch (e) {
+        console.error('[Soberania] Erro ao encerrar raid:', e);
+    }
+
+    server.runCommandSilent(`execute positioned ${Math.floor(targetV.x)} ${Math.floor(targetV.y || 66)} ${Math.floor(targetV.z)} run kill @e[distance=..180,type=#minecraft:raiders]`);
+
+    let out = stopped
+        ? `§a[Soberania] Raid em §e${targetV.name} §aencerrada e raiders removidos.`
+        : `§e[Soberania] Nenhuma raid ativa encontrada no centro de §e${targetV.name}§e (raiders próximos limpos).`;
+    if (player) player.tell(out);
+    else console.log(out);
+    return stopped ? 1 : 0;
+}
+
+// Mantém referência global atualizável em `kubejs reload server_scripts` para evitar closures antigas no commandRegistry
+global.vtCmd = {
+    showCityRankings: showCityRankings,
+    hireVillageNpc: hireVillageNpc,
+    relocateVillageNpc: relocateVillageNpc,
+    claimVillage: claimVillage,
+    collectTaxes: collectTaxes,
+    depositTaxes: depositTaxes,
+    toggleProtection: toggleProtection,
+    showVillageInfo: showVillageInfo,
+    upgradeVillageProsperity: upgradeVillageProsperity,
+    stopVillageRaid: stopVillageRaid
+};
+
     // Ranking de Cidades / Vilas (/ranking cidades)
     event.register(
         Commands.literal('ranking')
             .then(Commands.literal('cidades')
                 .executes(ctx => {
                     let p = ctx.source.player;
-                    if (p) showCityRankings(p);
+                    if (p) global.vtCmd.showCityRankings(p);
                     return 1;
                 })
                 .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                     let targetName = Arguments.STRING.getResult(ctx, 'target');
                     let p = ctx.source.server.getPlayer(targetName) || ctx.source.player;
-                    if (p) showCityRankings(p);
+                    if (p) global.vtCmd.showCityRankings(p);
                     return 1;
                 }))
             )
             .then(Commands.literal('vilas')
                 .executes(ctx => {
                     let p = ctx.source.player;
-                    if (p) showCityRankings(p);
+                    if (p) global.vtCmd.showCityRankings(p);
                     return 1;
                 })
             )
@@ -2482,12 +2644,12 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => {
                         let p = getPlayerFromContext(ctx);
                         let tipo = Arguments.STRING.getResult(ctx, 'tipo');
-                        return hireVillageNpc(p, tipo, ctx.source.server);
+                        return global.vtCmd.hireVillageNpc(p, tipo, ctx.source.server);
                     })
                     .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                         let p = getPlayerFromContext(ctx);
                         let tipo = Arguments.STRING.getResult(ctx, 'tipo');
-                        return hireVillageNpc(p, tipo, ctx.source.server);
+                        return global.vtCmd.hireVillageNpc(p, tipo, ctx.source.server);
                     }))
                 )
             )
@@ -2496,39 +2658,39 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => {
                         let p = getPlayerFromContext(ctx);
                         let tipo = Arguments.STRING.getResult(ctx, 'tipo');
-                        return relocateVillageNpc(p, tipo, ctx.source.server);
+                        return global.vtCmd.relocateVillageNpc(p, tipo, ctx.source.server);
                     })
                     .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                         let p = getPlayerFromContext(ctx);
                         let tipo = Arguments.STRING.getResult(ctx, 'tipo');
-                        return relocateVillageNpc(p, tipo, ctx.source.server);
+                        return global.vtCmd.relocateVillageNpc(p, tipo, ctx.source.server);
                     }))
                 )
             )
             .then(Commands.literal('reivindicar')
                 .executes(ctx => {
                     let p = getPlayerFromContext(ctx);
-                    return claimVillage(p, ctx.source.server);
+                    return global.vtCmd.claimVillage(p, ctx.source.server);
                 })
                 .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                     let p = getPlayerFromContext(ctx);
-                    return claimVillage(p, ctx.source.server);
+                    return global.vtCmd.claimVillage(p, ctx.source.server);
                 }))
             )
             .then(Commands.literal('coletar')
                 .executes(ctx => {
                     let { player, amount } = parseArgs(ctx);
-                    return collectTaxes(player, amount);
+                    return global.vtCmd.collectTaxes(player, amount);
                 })
                 .then(Commands.argument('arg1', Arguments.STRING.create(event))
                     .executes(ctx => {
                         let { player, amount } = parseArgs(ctx);
-                        return collectTaxes(player, amount);
+                        return global.vtCmd.collectTaxes(player, amount);
                     })
                     .then(Commands.argument('arg2', Arguments.STRING.create(event))
                         .executes(ctx => {
                             let { player, amount } = parseArgs(ctx);
-                            return collectTaxes(player, amount);
+                            return global.vtCmd.collectTaxes(player, amount);
                         })
                     )
                 )
@@ -2536,17 +2698,17 @@ ServerEvents.commandRegistry(event => {
             .then(Commands.literal('depositar')
                 .executes(ctx => {
                     let { player, amount } = parseArgs(ctx);
-                    return depositTaxes(player, amount);
+                    return global.vtCmd.depositTaxes(player, amount);
                 })
                 .then(Commands.argument('arg1', Arguments.STRING.create(event))
                     .executes(ctx => {
                         let { player, amount } = parseArgs(ctx);
-                        return depositTaxes(player, amount);
+                        return global.vtCmd.depositTaxes(player, amount);
                     })
                     .then(Commands.argument('arg2', Arguments.STRING.create(event))
                         .executes(ctx => {
                             let { player, amount } = parseArgs(ctx);
-                            return depositTaxes(player, amount);
+                            return global.vtCmd.depositTaxes(player, amount);
                         })
                     )
                 )
@@ -2556,33 +2718,33 @@ ServerEvents.commandRegistry(event => {
                     .executes(ctx => {
                         let p = getPlayerFromContext(ctx);
                         let tipo = Arguments.STRING.getResult(ctx, 'tipo');
-                        return toggleProtection(p, tipo);
+                        return global.vtCmd.toggleProtection(p, tipo);
                     })
                     .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                         let p = getPlayerFromContext(ctx);
                         let tipo = Arguments.STRING.getResult(ctx, 'tipo');
-                        return toggleProtection(p, tipo);
+                        return global.vtCmd.toggleProtection(p, tipo);
                     }))
                 )
             )
             .then(Commands.literal('info')
                 .executes(ctx => {
                     let p = getPlayerFromContext(ctx);
-                    return showVillageInfo(p);
+                    return global.vtCmd.showVillageInfo(p);
                 })
                 .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                     let p = getPlayerFromContext(ctx);
-                    return showVillageInfo(p);
+                    return global.vtCmd.showVillageInfo(p);
                 }))
             )
             .then(Commands.literal('evoluir')
                 .executes(ctx => {
                     let p = getPlayerFromContext(ctx);
-                    return upgradeVillageProsperity(p, ctx.source.server);
+                    return global.vtCmd.upgradeVillageProsperity(p, ctx.source.server);
                 })
                 .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                     let p = getPlayerFromContext(ctx);
-                    return upgradeVillageProsperity(p, ctx.source.server);
+                    return global.vtCmd.upgradeVillageProsperity(p, ctx.source.server);
                 }))
             )
             .then(Commands.literal('renunciar')
@@ -2593,6 +2755,16 @@ ServerEvents.commandRegistry(event => {
                 .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
                     let p = getPlayerFromContext(ctx);
                     return renounceVillage(p, ctx.source.server);
+                }))
+            )
+            .then(Commands.literal('encerrar_raid')
+                .requires(src => src.hasPermission(2))
+                .executes(ctx => {
+                    return global.vtCmd.stopVillageRaid(ctx.source.server, null, ctx.source.player);
+                })
+                .then(Commands.argument('vila', Arguments.STRING.create(event)).executes(ctx => {
+                    let vila = Arguments.STRING.getResult(ctx, 'vila');
+                    return global.vtCmd.stopVillageRaid(ctx.source.server, vila, ctx.source.player);
                 }))
             )
             .then(Commands.literal('renomear')
@@ -2767,4 +2939,52 @@ ServerEvents.commandRegistry(event => {
                 return showQuartermasterStatus(p);
             })
     );
+});
+
+global.getClaimedVillages = () => claimedVillages;
+global.getNearestClaimedVillage = (x, z, maxDist) => getNearestVillage(x, z, maxDist);
+global.getVillageProsperityInfo = (v) => getProsperityInfo(v);
+
+function applyOfflineCensusCatchup() {
+    let now = Date.now();
+    let changed = false;
+    const CYCLE_MS = 30 * 60 * 1000;
+    const MAX_OFFLINE_MS = 24 * 60 * 60 * 1000;
+    const INITIAL_FALLBACK_AT = 1794980054000; // 2026-11-18 02:34:14 BRT
+
+    for (let id in claimedVillages) {
+        let v = claimedVillages[id];
+        if (!v || !v.ownerUUID) continue;
+        let pop = v.population || 0;
+        let lastAt = v.lastCensusAt || INITIAL_FALLBACK_AT;
+        let elapsed = Math.min(MAX_OFFLINE_MS, Math.max(0, now - lastAt));
+        let cycles = Math.floor(elapsed / CYCLE_MS);
+
+        if (cycles >= 1 && !v.ruined && pop >= 5) {
+            let pInfo = getProsperityInfo(v);
+            let baseIron = Math.min(15, Math.floor(pop / 2));
+            let perCycle = Math.round(baseIron * pInfo.taxBonus);
+            let offlineIron = Math.floor(perCycle * cycles * 0.5);
+
+            if (offlineIron > 0) {
+                v.taxIron = (v.taxIron || 0) + offlineIron;
+                if (v.taxIron >= 10) {
+                    v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
+                    v.taxIron = v.taxIron % 10;
+                }
+                if (global.econMint) global.econMint('village_census_offline', offlineIron, null);
+                console.info(`[Soberania] Censo offline (50%): ${v.name} recebeu +${offlineIron} Ferro (${cycles} ciclos / ~${(cycles * 0.5).toFixed(1)}h).`);
+            }
+            v.lastCensusAt = now;
+            changed = true;
+        } else if (!v.lastCensusAt) {
+            v.lastCensusAt = now;
+            changed = true;
+        }
+    }
+    if (changed) saveVillages();
+}
+
+ServerEvents.loaded(() => {
+    applyOfflineCensusCatchup();
 });

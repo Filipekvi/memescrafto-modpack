@@ -128,6 +128,40 @@ function isArmor(item) {
     return id.endsWith('_helmet') || id.endsWith('_chestplate') || id.endsWith('_leggings') || id.endsWith('_boots') || id.includes('immersive_armors:');
 }
 
+function applyForgeNbt(player, item, cfg, tier, elemKey, weaponFlag) {
+    let loreLines = [
+        JSON.stringify({ text: String(cfg.name), italic: false })
+    ];
+    if (weaponFlag) {
+        loreLines.push(JSON.stringify({ text: `§a+${cfg.damage} Dano de Ataque Real`, italic: false }));
+        loreLines.push(JSON.stringify({ text: `§a+${Math.round(cfg.speed * 100)}% Poder de Impacto`, italic: false }));
+        if (tier === 5 && elemKey) {
+            loreLines.push(JSON.stringify({ text: `§d✦ Infusão Elemental: ${String(elemKey).toUpperCase()}`, italic: false }));
+        }
+    } else {
+        loreLines.push(JSON.stringify({ text: `§9🛡️ -${Math.round(cfg.armorDef * 100)}% Dano Recebido`, italic: false }));
+        if (tier >= 3) {
+            loreLines.push(JSON.stringify({ text: `§d❤ Bênção de Vitalidade (Tier ${tier})`, italic: false }));
+        }
+    }
+
+    item.nbt = item.nbt || {};
+    item.nbt.merge({
+        ForgeTier: tier,
+        ForgeElement: String(elemKey || 'planicie'),
+        display: {
+            Lore: loreLines
+        }
+    });
+
+    if (player && player.inventory) {
+        player.inventory.setChanged();
+    }
+    if (player && player.inventoryMenu && typeof player.inventoryMenu.broadcastChanges === 'function') {
+        player.inventoryMenu.broadcastChanges();
+    }
+}
+
 function showForgeInfo(player) {
     if (!player) return 0;
     let item = player.mainHandItem;
@@ -140,6 +174,14 @@ function showForgeInfo(player) {
     }
 
     let currentTier = (item.nbt && item.nbt.contains('ForgeTier')) ? item.nbt.getInt('ForgeTier') : 0;
+    if (currentTier >= 1 && currentTier <= 5) {
+        let hasLore = item.nbt.contains('display') && item.nbt.getCompound('display').contains('Lore');
+        if (!hasLore) {
+            let savedElem = item.nbt.contains('ForgeElement') ? item.nbt.getString('ForgeElement') : 'planicie';
+            applyForgeNbt(player, item, TIER_CONFIG[currentTier - 1], currentTier, savedElem, weaponFlag);
+            player.tell('§a[Forja Mística] Descrição visual (Lore) restaurada no equipamento!');
+        }
+    }
     if (currentTier >= 5) {
         player.tell('§6[Forja Mística] Este equipamento já atingiu o Tier V Máximo (Mítico dos Reinos)!');
         return 1;
@@ -325,29 +367,9 @@ function forgeEquipment(player, server) {
 
     // Aplica o Tier e Elemental Tag no equipamento
     let newTier = currentTier + 1;
-    item.nbt = item.nbt || {};
-    item.nbt.putInt('ForgeTier', newTier);
-    item.nbt.putString('ForgeElement', elemKey);
+    applyForgeNbt(player, item, nextCfg, newTier, elemKey, weaponFlag);
     if (global.chronicleFirst) global.chronicleFirst(`forge_t${newTier}`, player.name.string, `Forjou a 1a arma Tier ${newTier} (${elemKey}) do reino!`);
     if (global.chronicleEvent) global.chronicleEvent('forge', `${player.name.string} consagrou ${item.displayName.string} para Tier ${newTier} (${elemKey}).`);
-
-    let displayTag = item.nbt.getCompound('display');
-    let tagList = Utils.newList();
-    tagList.add(Utils.newString(`{"text":"${nextCfg.name}","italic":false}`));
-    if (weaponFlag) {
-        tagList.add(Utils.newString(`{"text":"§a+${nextCfg.damage} Dano de Ataque Real","italic":false}`));
-        tagList.add(Utils.newString(`{"text":"§a+${Math.round(nextCfg.speed * 100)}% Poder de Impacto","italic":false}`));
-        if (newTier === 5) {
-            tagList.add(Utils.newString(`{"text":"§d✦ Infusão Elemental: ${elemKey.toUpperCase()}","italic":false}`));
-        }
-    } else {
-        tagList.add(Utils.newString(`{"text":"§9🛡️ -${Math.round(nextCfg.armorDef * 100)}% Dano Recebido","italic":false}`));
-        if (newTier >= 3) {
-            tagList.add(Utils.newString(`{"text":"§d❤ Bênção de Vitalidade (Tier ${newTier})","italic":false}`));
-        }
-    }
-    displayTag.put('Lore', tagList);
-    item.nbt.put('display', displayTag);
 
     player.playSound('minecraft:block.anvil.use', 1.0, 1.0);
     player.playSound('minecraft:item.totem.use', 0.8, 1.2);

@@ -393,3 +393,40 @@ ServerEvents.commandRegistry(event => {
             .executes(ctx => listPlayerTitles(ctx.source.player))
     );
 });
+
+global.grantPlayerTitle = function (server, uuid, playerName, id, display, desc) {
+    if (!titlesLoaded) loadTitlesState();
+    let key = String(id || '').toLowerCase();
+    if (!key) return;
+    if (!titlesState.catalog[key] || display) {
+        titlesState.catalog[key] = {
+            display: display || `§6§l[${key}]`,
+            desc: desc || 'Título especial'
+        };
+    }
+    let u = String(uuid);
+    if (!titlesState.players[u]) {
+        titlesState.players[u] = { name: playerName || 'Desconhecido', active: '', unlocked: [] };
+    }
+    let rec = titlesState.players[u];
+    if (playerName) rec.name = playerName;
+    grantTitleToRecord(rec, key);
+    saveTitlesState();
+    let online = server ? server.getPlayer(rec.name) : null;
+    if (online) syncPlayerTabTeam(server, online);
+};
+
+global.revokePlayerTitle = function (server, uuid, id) {
+    if (!titlesLoaded) loadTitlesState();
+    let key = String(id || '').toLowerCase();
+    let u = String(uuid);
+    let rec = titlesState.players[u];
+    if (!rec || !rec.unlocked) return;
+    rec.unlocked = rec.unlocked.filter(t => t !== key);
+    if (rec.active === key) {
+        rec.active = rec.unlocked.length > 0 ? rec.unlocked[0] : '';
+    }
+    saveTitlesState();
+    let online = server ? server.getPlayer(rec.name) : null;
+    if (online) syncPlayerTabTeam(server, online);
+};

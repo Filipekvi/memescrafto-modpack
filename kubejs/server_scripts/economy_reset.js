@@ -161,20 +161,8 @@ PlayerEvents.loggedIn(event => {
     let p = event.player;
     if (!p) return;
 
-    if (p.persistentData.getBoolean('econ_wipe_v1')) return;
-    p.persistentData.putBoolean('econ_wipe_v1', true);
-
-    // Jogadores que ja tinham entrado antes do reset recebem limpeza + 5 Ouros de recomeco
-    if (p.persistentData.getBoolean('rpg_onboarding_v1')) {
-        purgePlayerCoins(p);
-        p.give(Item.of('lightmanscurrency:coin_gold', 5));
-        if (global.econMint) global.econMint('econ_reset_compensation', 50, p);
-
-        p.tell('§6§m==================================================');
-        p.tell('§e§l⚖ AJUSTE ECONOMICO DO SERVIDOR');
-        p.tell('§fCorrigimos um bug de duplicacao em baus de masmorra.');
-        p.tell('§fPara manter a economia justa, as moedas antigas foram resetadas e voce recebeu §65 Moedas de Ouro §fde recomeco!');
-        p.tell('§6§m==================================================');
+    if (!p.persistentData.getBoolean('econ_wipe_v1')) {
+        p.persistentData.putBoolean('econ_wipe_v1', true);
     }
 });
 

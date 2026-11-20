@@ -64,8 +64,8 @@ BlockEvents.rightClicked(event => {
         let rollCat    = Math.random();
         let rollToken  = Math.random();
 
-        // 55% de chance: Moedas de Cobre e Ferro
-        if (rollCopper < 0.55) {
+        // 27.5% de chance: Moedas de Cobre e Ferro
+        if (rollCopper < 0.275) {
             let copperAmt = 2 + Math.floor(Math.random() * 6);
             let ironAmt   = 1 + Math.floor(Math.random() * 2);
             checkBlock.popItem(Item.of('lightmanscurrency:coin_copper', copperAmt));
@@ -73,8 +73,8 @@ BlockEvents.rightClicked(event => {
             if (global.econMint) global.econMint('dungeon_loot', ironAmt + (copperAmt * 0.1), p);
         }
 
-        // 10% de chance: 1 Moeda de Ouro
-        if (rollGold < 0.10) {
+        // 5% de chance: 1 Moeda de Ouro
+        if (rollGold < 0.05) {
             checkBlock.popItem(Item.of('lightmanscurrency:coin_gold', 1));
             if (global.econMint) global.econMint('dungeon_loot', 10, p);
         }

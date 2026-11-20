@@ -201,6 +201,10 @@ file = "config/guardvillagers-common-5.toml.bak"
 hash = "2c2ee0fcc95a2c6baebd0fcdc78737e2650382161969108a8dcc5f7cfab111f6"
 
 [[files]]
+file = "config/immersive_aircraft.json"
+hash = "f59a5e4197b653a3555e88f685f9052b8148898af77fcd94c66863ed63b15516"
+
+[[files]]
 file = "config/immersive_armors.json"
 hash = "3b1b222917697f4e339d7770136473fb277c46687d94b85f0b0835be8ebad695"
 
@@ -234,7 +238,7 @@ hash = "02cd35fbcc371cf63303ae1264ad9f4613b3f73ace93417af825baf7d3ac7baf"
 
 [[files]]
 file = "config/oculus.properties"
-hash = "21c0f05fa543a17a442d18d13796d03e4be268211cdf26f0fb0323163ccb05ad"
+hash = "00f2be15260f35a0cf8c0fd806d1a00f26b3e8f6f8b2fd2469bfa47c136e96fa"
 
 [[files]]
 file = "config/sidebar_buttons.json"
@@ -665,12 +669,16 @@ file = "kubejs/README.txt"
 hash = "989f3737ae4621b8ff6730bce4cbeeee756921e7e510e0c281c8a350501d98af"
 
 [[files]]
+file = "kubejs/server_scripts/blood_moon.js"
+hash = "0b6321184f6f43ef030942bf109136f7bd853f84f92f24162b3c96c43460ed93"
+
+[[files]]
 file = "kubejs/server_scripts/central_bank.js"
 hash = "63f84a67bd05cd9960db2f6529e608e68552d5d0627e94bc5be39647e414d801"
 
 [[files]]
 file = "kubejs/server_scripts/chat_titles.js"
-hash = "7eb69cf2d41ed15cadd06a033682a11b372b5902cefe301595ba301e44299321"
+hash = "af511c25477b53e3dab64c35e6d8fd13305966d2265cb6324504596c782facf5"
 
 [[files]]
 file = "kubejs/server_scripts/chronicle_log.js"
@@ -686,7 +694,7 @@ hash = "7a4511779deee02d3910916fcf39054a66c38d9446572b9d1fc152901aca526f"
 
 [[files]]
 file = "kubejs/server_scripts/dungeon_loot_and_onboarding.js"
-hash = "1cfa9822ce504c9a1c955ac186756d6b5976ce75e629685ec5bca42748868215"
+hash = "bcd541e1704a4d431080e3f4eb669a846777f7c9acfc517316244f2c58526dd3"
 
 [[files]]
 file = "kubejs/server_scripts/economy_ledger.js"
@@ -694,7 +702,7 @@ hash = "36c680801a9b6c85118168468bd968ad5e14b8d5404b61101fcb5d27914a7013"
 
 [[files]]
 file = "kubejs/server_scripts/economy_reset.js"
-hash = "9e4d59d163e353aeeaf52a0a7c497aac92dceb90cafdbfe5b4b177c8946dc019"
+hash = "f42b15f5790ceeddbaacc5f510db244d65f5a9b0c7d49fe334d8a78ffe301761"
 
 [[files]]
 file = "kubejs/server_scripts/farmer_market.js"
@@ -710,11 +718,11 @@ hash = "773c43df3ee093fbf05825ac4f18e05c2daac0b8fa4e741ea2981c5a915f6b82"
 
 [[files]]
 file = "kubejs/server_scripts/npc_interactions.js"
-hash = "fe4633dea960518d394e5406ded1857c1a4c49f5c73704d8e629dda976b4cfa1"
+hash = "666970f894da721315c514c7bc01fcec9837bca4152e33d323976c3b84875b99"
 
 [[files]]
 file = "kubejs/server_scripts/pack_crafting.js"
-hash = "7928f838faa456f631c02f17f7f830daa124aa185b42f91ea529829d5b999fae"
+hash = "9a3de89eb16255a02beac4e182dfd6b04182ed0dbb874c8053771b4148567509"
 
 [[files]]
 file = "kubejs/server_scripts/priest_healer.js"
@@ -722,11 +730,11 @@ hash = "21fee18afd0abe88f52b9cd1fc764d5fb53557b3312e0fe16ab08d7f4a288dd9"
 
 [[files]]
 file = "kubejs/server_scripts/village_territory.js"
-hash = "a0792415d9df8a9912233b6ee4c92b0eacd24646c0272a43d04c253e9a223313"
+hash = "a9879751bb8d300bdc253215fce0130d99d9e534371df76f4c8c4eeadf61d9ca"
 
 [[files]]
 file = "kubejs/server_scripts/weapon_forge.js"
-hash = "a9a6ff204b8b6cb00d0b09de3da55b68e9bf03b7c373beba5d5f61b5c9d1e6fd"
+hash = "08937ff123a2eb5855e07dc80afa8a54522a34f6dbf91d429764a4e34fecdcbc"
 
 [[files]]
 file = "kubejs/server_scripts/world_boss.js"
@@ -825,6 +833,11 @@ hash = "b1cb4d82ea9f137a87e12a7aaf3329619294b56f7d70337dfd557a76e10b6e07"
 [[files]]
 file = "mods/guardvillagers-1.20.1-1.6.19.pw.toml"
 hash = "91db0e01aec82e8556d14405eb45721e6df5acf8792f112cdcc770cb6fd603ef"
+metafile = true
+
+[[files]]
+file = "mods/immersive_aircraft-1.5.0+1.20.1-forge.pw.toml"
+hash = "6c7825bb629fa8c8f1a6ab7460f8e08765ccf3d69df59ecdd37aab2d88eb9a85"
 metafile = true
 
 [[files]]
@@ -954,4 +967,4 @@ metafile = true
 
 [[files]]
 file = "servers.dat"
-hash = "4110a7f7bb48130420aa404d849a1e7c976696821d233cf1efb2466003b2a92d"
+hash = "4ac55a4f58e486736ed8be77bd128416c9756c414dd0f98db32193c8ea85e777"
