@@ -275,35 +275,40 @@ function countCargoPacksInNbtList(itemsList) {
     return total;
 }
 
+function countCargoPacksInItemStack(item) {
+    if (!item || !item.id) return 0;
+    if (item.id.startsWith('kubejs:fardo_')) {
+        return Math.max(1, item.count || 1);
+    }
+    if (!item.nbt) return 0;
+    let total = 0;
+    if (item.nbt.contains('BlockEntityTag')) {
+        let bet = item.nbt.getCompound('BlockEntityTag');
+        if (bet && bet.contains('Items')) {
+            total += countCargoPacksInNbtList(bet.getList('Items', 10));
+        }
+    }
+    if (SbBackpackStorage && item.nbt.contains('contentsUuid')) {
+        try {
+            let bpUuid = item.nbt.getUUID('contentsUuid');
+            let contents = SbBackpackStorage.get().getOrCreateBackpackContents(bpUuid);
+            if (contents && contents.contains('inventory')) {
+                let invTag = contents.getCompound('inventory');
+                if (invTag && invTag.contains('Items')) {
+                    total += countCargoPacksInNbtList(invTag.getList('Items', 10));
+                }
+            }
+        } catch (eBp) {}
+    }
+    return total;
+}
+
 function countPlayerCargoPacks(player) {
     if (!player || !player.inventory) return 0;
     let total = 0;
     try {
         player.inventory.allItems.forEach(item => {
-            if (!item || !item.id) return;
-            if (item.id.startsWith('kubejs:fardo_')) {
-                total += Math.max(1, item.count || 1);
-                return;
-            }
-            if (!item.nbt) return;
-            if (item.nbt.contains('BlockEntityTag')) {
-                let bet = item.nbt.getCompound('BlockEntityTag');
-                if (bet && bet.contains('Items')) {
-                    total += countCargoPacksInNbtList(bet.getList('Items', 10));
-                }
-            }
-            if (SbBackpackStorage && item.nbt.contains('contentsUuid')) {
-                try {
-                    let bpUuid = item.nbt.getUUID('contentsUuid');
-                    let contents = SbBackpackStorage.get().getOrCreateBackpackContents(bpUuid);
-                    if (contents && contents.contains('inventory')) {
-                        let invTag = contents.getCompound('inventory');
-                        if (invTag && invTag.contains('Items')) {
-                            total += countCargoPacksInNbtList(invTag.getList('Items', 10));
-                        }
-                    }
-                } catch (eBp) {}
-            }
+            total += countCargoPacksInItemStack(item);
         });
     } catch (e) {}
     return total;
@@ -443,19 +448,25 @@ ServerEvents.tick(event => {
         if (isRiding && p.vehicle && String(p.vehicle.type).startsWith('immersive_aircraft:')) {
             let vehiclePackCount = 0;
             try {
-                if (p.vehicle.nbt && p.vehicle.nbt.contains('inventory')) {
-                    let vInv = p.vehicle.nbt.getCompound('inventory');
-                    if (vInv && vInv.contains('Items')) {
-                        vehiclePackCount = countCargoPacksInNbtList(vInv.getList('Items', 10));
+                if (typeof p.vehicle.getInventory === 'function') {
+                    let vInv = p.vehicle.getInventory();
+                    if (vInv && typeof vInv.getContainerSize === 'function') {
+                        let sz = vInv.getContainerSize();
+                        for (let vi = 0; vi < sz; vi++) {
+                            let st = vInv.getItem(vi);
+                            if (st && !st.isEmpty()) {
+                                vehiclePackCount += countCargoPacksInItemStack(st);
+                            }
+                        }
                     }
-                } else if (p.vehicle.nbt && p.vehicle.nbt.contains('Items')) {
-                    vehiclePackCount = countCargoPacksInNbtList(p.vehicle.nbt.getList('Items', 10));
+                } else if (p.vehicle.nbt && p.vehicle.nbt.contains('Inventory')) {
+                    vehiclePackCount = countCargoPacksInNbtList(p.vehicle.nbt.getList('Inventory', 10));
                 }
             } catch (eVeh) {}
             if (packCount + vehiclePackCount > 2) {
                 p.stopRiding();
                 isRiding = false;
-                p.tell('§c[Rotas Mercantis] §fCarga pesada demais para voar (máximo de §e2 fardos§f)! Use carroças ou navios.');
+                p.tell(`§c[Rotas Mercantis] §fCarga pesada demais para voar (${packCount + vehiclePackCount} fardos, máx. §e2§f)! Use carroças ou navios.`);
                 p.playSound('minecraft:entity.villager.no', 1.0, 0.8);
             }
         }

@@ -238,7 +238,7 @@ hash = "02cd35fbcc371cf63303ae1264ad9f4613b3f73ace93417af825baf7d3ac7baf"
 
 [[files]]
 file = "config/oculus.properties"
-hash = "00f2be15260f35a0cf8c0fd806d1a00f26b3e8f6f8b2fd2469bfa47c136e96fa"
+hash = "d1821b956684060d886f4a11bb66cce09e4130e8e1b95a480c6b41fe1520385c"
 
 [[files]]
 file = "config/sidebar_buttons.json"
@@ -722,7 +722,7 @@ hash = "666970f894da721315c514c7bc01fcec9837bca4152e33d323976c3b84875b99"
 
 [[files]]
 file = "kubejs/server_scripts/pack_crafting.js"
-hash = "9a3de89eb16255a02beac4e182dfd6b04182ed0dbb874c8053771b4148567509"
+hash = "fbf6cdde82c193ba5f719edb9b74e8f5cc511a67c1847b672d374a57d1403135"
 
 [[files]]
 file = "kubejs/server_scripts/priest_healer.js"
@@ -967,4 +967,4 @@ metafile = true
 
 [[files]]
 file = "servers.dat"
-hash = "4ac55a4f58e486736ed8be77bd128416c9756c414dd0f98db32193c8ea85e777"
+hash = "4110a7f7bb48130420aa404d849a1e7c976696821d233cf1efb2466003b2a92d"

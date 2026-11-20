@@ -1,4 +1,4 @@
-﻿# Sincroniza z:\memescrafto-forge\client\ para z:\memescrafto-forge\modpack\ e atualiza index.toml + pack.toml
+# Sincroniza z:\memescrafto-forge\client\ para z:\memescrafto-forge\modpack\ e atualiza index.toml + pack.toml
 param(
     [string]$ClientDir = "z:\memescrafto-forge\client",
     [string]$PackDir = $PSScriptRoot
