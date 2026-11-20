@@ -1,4 +1,4 @@
-# Sincroniza z:\memescrafto-forge\client\ para z:\memescrafto-forge\modpack\ e atualiza index.toml + pack.toml
+﻿# Sincroniza z:\memescrafto-forge\client\ para z:\memescrafto-forge\modpack\ e atualiza index.toml + pack.toml
 param(
     [string]$ClientDir = "z:\memescrafto-forge\client",
     [string]$PackDir = $PSScriptRoot
@@ -34,10 +34,11 @@ foreach ($sub in @("kubejs", "config", "defaultconfigs", "resourcepacks")) {
 $kubeData = Join-Path $PackDir "kubejs\data"
 if (Test-Path $kubeData) { Remove-Item $kubeData -Recurse -Force }
 
-$serversDat = Join-Path $ClientDir "servers.dat"
-if (Test-Path $serversDat) {
-    Copy-Item $serversDat (Join-Path $PackDir "servers.dat") -Force
-}
+# Não sobrescrever servers.dat do modpack com client\servers.dat (client usa localhost, modpack usa memescrafto.serveminecraft.net)
+# $serversDat = Join-Path $ClientDir "servers.dat"
+# if (Test-Path $serversDat) {
+#     Copy-Item $serversDat (Join-Path $PackDir "servers.dat") -Force
+# }
 
 Write-Host "[2/4] Processando mods (Modrinth API + locais)..." -ForegroundColor Cyan
 $modsSrc = Join-Path $ClientDir "mods"
