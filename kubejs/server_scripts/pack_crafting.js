@@ -203,7 +203,6 @@ ServerEvents.recipes(event => {
         'immersive_aircraft:gyrodyne',
         'immersive_aircraft:quadrocopter',
         'immersive_aircraft:bamboo_hopper',
-        'immersive_aircraft:warship',
         'immersive_aircraft:rotary_cannon',
         'immersive_aircraft:bomb_bay'
     ];
@@ -446,6 +445,13 @@ ServerEvents.tick(event => {
         let packCount = countPlayerCargoPacks(p);
         let isRiding = p.isPassenger() || (p.vehicle != null);
         if (isRiding && p.vehicle && String(p.vehicle.type).startsWith('immersive_aircraft:')) {
+            const AIRCRAFT_MAX_CARGO = {
+                'immersive_aircraft:airship': 3,
+                'immersive_aircraft:cargo_airship': 6,
+                'immersive_aircraft:warship': 12
+            };
+            let vType = String(p.vehicle.type);
+            let maxPacks = AIRCRAFT_MAX_CARGO[vType] !== undefined ? AIRCRAFT_MAX_CARGO[vType] : 3;
             let vehiclePackCount = 0;
             try {
                 if (typeof p.vehicle.getInventory === 'function') {
@@ -463,10 +469,10 @@ ServerEvents.tick(event => {
                     vehiclePackCount = countCargoPacksInNbtList(p.vehicle.nbt.getList('Inventory', 10));
                 }
             } catch (eVeh) {}
-            if (packCount + vehiclePackCount > 2) {
+            if (packCount + vehiclePackCount > maxPacks) {
                 p.stopRiding();
                 isRiding = false;
-                p.tell(`§c[Rotas Mercantis] §fCarga pesada demais para voar (${packCount + vehiclePackCount} fardos, máx. §e2§f)! Use carroças ou navios.`);
+                p.tell(`§c[Rotas Mercantis] §fCarga pesada demais para esta aeronave (${packCount + vehiclePackCount} fardos, máx. §e${maxPacks}§f)! Use carroças ou navios.`);
                 p.playSound('minecraft:entity.villager.no', 1.0, 0.8);
             }
         }
