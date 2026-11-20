@@ -159,10 +159,58 @@ function getProsperityInfo(v) {
             v.prosperityTier = tier;
         }
     }
-    if (tier >= 3) return { tier: 3, name: '§6§lNível III (Metrópole)', nextHint: '§6Máximo', maxGuards: 12, taxBonus: 1.25, nextCost: 0 };
-    if (tier === 2) return { tier: 2, name: '§bNível II (Bastião)',    nextHint: '§8Próx: 150 Ouro (/totem evoluir)', maxGuards: 8,  taxBonus: 1.25, nextCost: 150 };
-    if (tier === 1) return { tier: 1, name: '§aNível I (Mercantil)',   nextHint: '§8Próx: 50 Ouro (/totem evoluir)',  maxGuards: 4,  taxBonus: 1.0,  nextCost: 50 };
-    return { tier: 0, name: '§7Nível 0 (Assentamento)', nextHint: '§8Próx: 15 Ouro (/totem evoluir)', maxGuards: 2, taxBonus: 1.0, nextCost: 15 };
+    if (tier >= 3) return { tier: 3, name: '§6§lNível III (Metrópole)', nextHint: '§6Máximo', maxGuards: 12, taxBonus: 1.25, nextCost: 0, maxDebtIron: 400 };
+    if (tier === 2) return { tier: 2, name: '§bNível II (Bastião)',    nextHint: '§8Próx: 150 Ouro (/totem evoluir)', maxGuards: 8,  taxBonus: 1.25, nextCost: 150, maxDebtIron: 150 };
+    if (tier === 1) return { tier: 1, name: '§aNível I (Mercantil)',   nextHint: '§8Próx: 50 Ouro (/totem evoluir)',  maxGuards: 4,  taxBonus: 1.0,  nextCost: 50, maxDebtIron: 50 };
+    return { tier: 0, name: '§7Nível 0 (Assentamento)', nextHint: '§8Próx: 15 Ouro (/totem evoluir)', maxGuards: 2, taxBonus: 1.0, nextCost: 15, maxDebtIron: 20 };
+}
+
+const VILLAGE_NPC_REQS = {
+    armazem:    { name: 'Armazém Geral', villagers: 8,  goldCost: 5,  tier: 0 },
+    fazendeiro: { name: 'Feirante Agrícola', villagers: 10, goldCost: 8, tier: 0 },
+    guilda:     { name: 'Guilda Mercante', villagers: 12, goldCost: 50, tier: 1 },
+    intendente: { name: 'Intendente de Guerra', villagers: 14, goldCost: 15, tier: 1 },
+    banco:      { name: 'Banqueiro Local', villagers: 18, goldCost: 15, tier: 2 },
+    padre:      { name: 'Padre Curandeiro', villagers: 20, goldCost: 12, tier: 2 },
+    ferreiro:   { name: 'Mestre da Forja', villagers: 25, goldCost: 50, tier: 3 }
+};
+
+function calculateVillageUpkeep(v) {
+    let pInfo = getProsperityInfo(v);
+    let guardIron = (pInfo.maxGuards || 2) * 2;
+    let npcIron = 0;
+    let hired = (v && Array.isArray(v.hiredNpcs)) ? v.hiredNpcs : [];
+    for (let i = 0; i < hired.length; i++) {
+        let req = VILLAGE_NPC_REQS[hired[i]];
+        if (req && req.goldCost > 0) {
+            // 10% do custo do NPC em Ouro convertido para Ferro (1 Ouro = 10 Ferro)
+            npcIron += Math.max(1, Math.round(req.goldCost * 10 * 0.10));
+        }
+    }
+    return {
+        guardIron: guardIron,
+        npcIron: npcIron,
+        totalIron: guardIron + npcIron,
+        maxDebtIron: pInfo.maxDebtIron || 20
+    };
+}
+
+function creditVillageTreasury(v, ironAmount) {
+    if (!v || ironAmount <= 0) return { paidDebt: 0, netCredited: 0 };
+    let debt = v.taxDebtIron || 0;
+    let paidDebt = Math.min(debt, ironAmount);
+    v.taxDebtIron = Math.max(0, debt - paidDebt);
+    if (v.taxDebtIron === 0) v.debtStrikes = 0;
+
+    let rem = ironAmount - paidDebt;
+    if (rem > 0) {
+        v.taxIron = (v.taxIron || 0) + rem;
+        if (v.taxIron >= 10) {
+            v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
+            v.taxIron = v.taxIron % 10;
+        }
+    }
+    return { paidDebt: paidDebt, netCredited: rem };
 }
 
 function getVillageCenterCoords(v, level) {
@@ -850,6 +898,11 @@ function collectTaxes(player, amountStr) {
         return 0;
     }
 
+    if ((v.taxDebtIron || 0) > 0) {
+        player.tell(`§c[Cofre da Vila] Saque bloqueado! §e${v.name} §cpossui uma dívida ativa de §4-${v.taxDebtIron} Ferro§c. Deposite Ouro para quitar.`);
+        return 0;
+    }
+
     let gold = v.taxGold || 0;
     let iron = v.taxIron || 0;
 
@@ -967,15 +1020,9 @@ function depositTaxes(player, amountStr) {
         }
     });
 
-    v.taxGold = (v.taxGold || 0) + goldToDeposit;
-    v.taxIron = (v.taxIron || 0) + ironToDeposit;
+    let totalDepositIron = (goldToDeposit * 10) + ironToDeposit;
+    let depRes = creditVillageTreasury(v, totalDepositIron);
     v.economicPoints = (v.economicPoints || 0) + (goldToDeposit * 10) + Math.floor(ironToDeposit);
-
-    if (v.taxIron >= 10) {
-        let extraGold = Math.floor(v.taxIron / 10);
-        v.taxGold += extraGold;
-        v.taxIron = v.taxIron % 10;
-    }
 
     saveVillages();
 
@@ -983,6 +1030,9 @@ function depositTaxes(player, amountStr) {
     player.playSound('minecraft:block.amethyst_block.chime', 1.0, 1.2);
     player.tell('§6§m----------------------------------------');
     player.tell('§6§l✦ §e§lCOFRE DA VILA: DEPÓSITO §6§l✦');
+    if (depRes.paidDebt > 0) {
+        player.tell(`§aQuitado da dívida: §f${depRes.paidDebt} Ferro §7(Dívida restante: §c-${v.taxDebtIron || 0} Ferro§7)`);
+    }
     if (goldToDeposit > 0) player.tell(`§7Depositado: §6+${goldToDeposit} Moedas de Ouro`);
     if (ironToDeposit > 0) player.tell(`§7Depositado: §f+${ironToDeposit} Moedas de Ferro`);
     player.tell(`§7Saldo no Cofre: §6${v.taxGold || 0} Ouro§7, §f${v.taxIron || 0} Ferro`);
@@ -1078,6 +1128,7 @@ function isVillageAreaLoaded(server, v) {
 
 function replenishVillageGuards(server, v) {
     if (!server || !v || !v.ownerUUID || v.ruined) return;
+    if ((v.taxDebtIron || 0) > 0) return; // Guardas não são repostos enquanto houver dívida ativa
     // Só processa se houver algum jogador perto da vila (chunks comprovadamente carregados)
     if (!isVillageAreaLoaded(server, v)) return;
 
@@ -1156,17 +1207,7 @@ function hireVillageNpc(player, npcType, server) {
         return 0;
     }
 
-    let reqs = {
-        armazem:    { name: 'Armazém Geral', villagers: 8,  goldCost: 5,  tier: 0 },
-        fazendeiro: { name: 'Feirante Agrícola', villagers: 10, goldCost: 8, tier: 0 },
-        guilda:     { name: 'Guilda Mercante', villagers: 12, goldCost: 50, tier: 1 },
-        intendente: { name: 'Intendente de Guerra', villagers: 14, goldCost: 15, tier: 1 },
-        banco:      { name: 'Banqueiro Local', villagers: 18, goldCost: 15, tier: 2 },
-        padre:      { name: 'Padre Curandeiro', villagers: 20, goldCost: 12, tier: 2 },
-        ferreiro:   { name: 'Mestre da Forja', villagers: 25, goldCost: 50, tier: 3 }
-    };
-
-    let req = reqs[npcType];
+    let req = VILLAGE_NPC_REQS[npcType];
     if (!req) return 0;
 
     let livePop = countLivingVillagers(player.level, v.x, v.y, v.z, 120);
@@ -1465,11 +1506,7 @@ function buyFromGeneralStore(player, itemKey) {
         let isIron = prod.costCoin.includes('iron');
         ivaIron = isIron ? Math.max(1, Math.round(prod.costAmt * 0.08)) : 0;
         if (ivaIron > 0) {
-            v.taxIron = (v.taxIron || 0) + ivaIron;
-            if (v.taxIron >= 10) {
-                v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
-                v.taxIron = v.taxIron % 10;
-            }
+            creditVillageTreasury(v, ivaIron);
         }
         v.economicPoints = (v.economicPoints || 0) + 1;
         saveVillages();
@@ -1488,7 +1525,8 @@ function showCityRankings(player) {
             let pop = v.population || 5;
             let gold = v.taxGold || 0;
             let econ = v.economicPoints || 0;
-            let score = (pop * 10) + (gold * 5) + (econ * 2);
+            let debtPenalty = Math.floor((v.taxDebtIron || 0) / 2);
+            let score = Math.max(0, (pop * 10) + (gold * 5) + (econ * 2) - debtPenalty);
             list.push({
                 name: v.name,
                 party: v.partyName,
@@ -1527,6 +1565,8 @@ function showVillageInfo(player) {
     let pInfo = getProsperityInfo(v);
     let eInfo = getEconomicTier(v.economicPoints || 0);
     let passiveIron = livePop >= 5 ? Math.round(Math.min(15, Math.floor(livePop / 2)) * pInfo.taxBonus) : 0;
+    let upkeep = calculateVillageUpkeep(v);
+    let debt = v.taxDebtIron || 0;
 
     player.tell('§6§m----------------------------------------');
     player.tell(`§6§l✦ §e§lDOMÍNIO: ${v.name.toUpperCase()} §6§l✦`);
@@ -1534,7 +1574,12 @@ function showVillageInfo(player) {
     player.tell(`§7Habitantes: ${livePop >= 5 ? '§a' + livePop + ' Aldeões §2(Viva)' : '§c' + livePop + ' Aldeões §4(Ruína)'} §8| §7Guarda: §b${pInfo.maxGuards} Guardas`);
     player.tell(`§7Prosperidade: ${pInfo.name} §7(${pInfo.nextHint}§7)`);
     player.tell(`§7Poderio Econômico: ${eInfo.name} §8(§e${v.economicPoints || 0} pts§8)`);
-    player.tell(`§7Cofre: §6${v.taxGold || 0} Ouro§7, §f${v.taxIron || 0} Ferro §8(§a+${passiveIron} Ferro/30m§8)`);
+    player.tell(`§7Cofre: §6${v.taxGold || 0} Ouro§7, §f${v.taxIron || 0} Ferro §8(§a+${passiveIron} §7/ §c-${upkeep.totalIron} Ferro/30m§8)`);
+    if (debt > 0) {
+        player.tell(`§4Dívida Ativa: §c-${debt} Ferro §8(§7Limite do Nível: §4-${upkeep.maxDebtIron} Ferro§8 | §7Avisos: §c${v.debtStrikes || 0}/2§8)`);
+    } else {
+        player.tell(`§7Manutenção: §e${upkeep.guardIron} Ferro (Guardas) §7+ §e${upkeep.npcIron} Ferro (NPCs) §8| §7Limite dívida: §c-${upkeep.maxDebtIron} Ferro`);
+    }
     player.tell('§7Leis para Visitantes (Fora de Cerco):');
     player.tell(` §8▪ §fAldeões: §aProtegidos §8| §fPvP: ${v.protectPvp !== false ? '§aBloqueado' : '§cLiberado'}`);
     player.tell(` §8▪ §fQuebrar: ${v.protectBreak !== false ? '§aProtegido' : '§cLiberado'} §8| §fColocar: ${v.protectPlace !== false ? '§aProtegido' : '§cLiberado'}`);
@@ -1904,24 +1949,61 @@ ServerEvents.tick(event => {
             let pInfo = getProsperityInfo(v);
             let baseIron = Math.min(15, Math.floor(pop / 2));
             let totalIron = Math.round(baseIron * pInfo.taxBonus);
-
-            v.taxIron = (v.taxIron || 0) + totalIron;
-            if (v.taxIron >= 10) {
-                v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
-                v.taxIron = v.taxIron % 10;
-            }
-            v.lastCensusAt = Date.now();
             if (global.econMint && totalIron > 0) global.econMint('village_census', totalIron, null);
+
+            creditVillageTreasury(v, totalIron);
+
+            // Deduz Manutenção (Upkeep: Guardas + 10% do custo dos NPCs contratados)
+            let upkeep = calculateVillageUpkeep(v);
+            let treasuryTotalIron = ((v.taxGold || 0) * 10) + (v.taxIron || 0);
+            let afterUpkeep = treasuryTotalIron - upkeep.totalIron;
+            let demotedMsg = null;
+
+            if (afterUpkeep >= 0) {
+                v.taxGold = Math.floor(afterUpkeep / 10);
+                v.taxIron = afterUpkeep % 10;
+                v.taxDebtIron = 0;
+                v.debtStrikes = 0;
+            } else {
+                v.taxGold = 0;
+                v.taxIron = 0;
+                let addedDebt = -afterUpkeep;
+                v.taxDebtIron = Math.min(upkeep.maxDebtIron, (v.taxDebtIron || 0) + addedDebt);
+
+                if (v.taxDebtIron >= upkeep.maxDebtIron) {
+                    v.debtStrikes = (v.debtStrikes || 0) + 1;
+                    let curTier = Number(v.prosperityTier) || 0;
+                    if (v.debtStrikes >= 2 && curTier > 0) {
+                        v.prosperityTier = curTier - 1;
+                        v.debtStrikes = 0;
+                        let demInfo = getProsperityInfo(v);
+                        v.taxDebtIron = Math.min(v.taxDebtIron, demInfo.maxDebtIron);
+                        demotedMsg = `§c§l[⚠ REBAIXAMENTO POR DÍVIDA] §e${v.name} §catingiu o limite de dívida por 2 censos seguidos e foi rebaixada para ${demInfo.name}§c!`;
+                        if (global.chronicleEvent) global.chronicleEvent('village', `Vila "${v.name}" foi rebaixada para ${demInfo.name} por insolvência.`);
+                    }
+                } else {
+                    v.debtStrikes = 0;
+                }
+            }
+
+            v.lastCensusAt = Date.now();
             saveVillages();
 
-            // Verifica guarnição apenas quando a área está carregada
+            // Verifica guarnição apenas quando a área está carregada (pula se estiver em dívida)
             if (areaLoaded) {
                 replenishVillageGuards(server, v);
             }
 
+            let netIron = totalIron - upkeep.totalIron;
+            let netStr = netIron >= 0 ? `§a+${netIron}` : `§c${netIron}`;
             server.playerList.players.forEach(p => {
                 if (isPlayerAuthorizedInVillage(p, v)) {
-                    p.tell(`§6[Censo Real: ${v.name}] §fPopulação: §a${pop} Aldeões§f. Imposto Passivo depositado no Cofre do Emissário: §f+${totalIron} Moedas de Ferro §7(Total no Cofre: §6${v.taxGold} Ouro§7, §f${v.taxIron} Ferro§7).`);
+                    if ((v.taxDebtIron || 0) > 0) {
+                        p.tell(`§6[Censo Real: ${v.name}] §fPop: §a${pop} §8| §fImposto: §a+${totalIron} §7/ §cManutenção: -${upkeep.totalIron} §8(${netStr} Ferro§8) §8| §4Dívida: §c-${v.taxDebtIron}/${upkeep.maxDebtIron} Ferro`);
+                    } else {
+                        p.tell(`§6[Censo Real: ${v.name}] §fPop: §a${pop} §8| §fImposto: §a+${totalIron} §7/ §cManutenção: -${upkeep.totalIron} §8(${netStr} Ferro§8) §7(Cofre: §6${v.taxGold} Ouro§7, §f${v.taxIron} Ferro§7)`);
+                    }
+                    if (demotedMsg) p.tell(demotedMsg);
                 }
             });
         }
@@ -2304,12 +2386,8 @@ global.recordVillageTax = function(x, z, totalIronCoins) {
         let rate = (pInfo.tier >= 3) ? 0.12 : 0.08;
         let taxIronTotal = Math.round(totalIronCoins * rate);
         if (taxIronTotal >= 1) {
-            v.taxIron = (v.taxIron || 0) + taxIronTotal;
+            creditVillageTreasury(v, taxIronTotal);
             v.economicPoints = (v.economicPoints || 0) + (taxIronTotal * 2);
-            if (v.taxIron >= 10) {
-                v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
-                v.taxIron = v.taxIron % 10;
-            }
             if (global.econMint) global.econMint('village_trade_tax', taxIronTotal, null);
             saveVillages();
             return { village: v.name, party: v.partyName, taxIron: taxIronTotal };
@@ -2967,11 +3045,7 @@ function applyOfflineCensusCatchup() {
             let offlineIron = Math.floor(perCycle * cycles * 0.5);
 
             if (offlineIron > 0) {
-                v.taxIron = (v.taxIron || 0) + offlineIron;
-                if (v.taxIron >= 10) {
-                    v.taxGold = (v.taxGold || 0) + Math.floor(v.taxIron / 10);
-                    v.taxIron = v.taxIron % 10;
-                }
+                creditVillageTreasury(v, offlineIron);
                 if (global.econMint) global.econMint('village_census_offline', offlineIron, null);
                 console.info(`[Soberania] Censo offline (50%): ${v.name} recebeu +${offlineIron} Ferro (${cycles} ciclos / ~${(cycles * 0.5).toFixed(1)}h).`);
             }
