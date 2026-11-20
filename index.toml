@@ -698,7 +698,7 @@ hash = "bcd541e1704a4d431080e3f4eb669a846777f7c9acfc517316244f2c58526dd3"
 
 [[files]]
 file = "kubejs/server_scripts/economy_ledger.js"
-hash = "36c680801a9b6c85118168468bd968ad5e14b8d5404b61101fcb5d27914a7013"
+hash = "f47d2d9ebcdb6536fde33288465f4fa7ceb68e70bb182ff635ed558eff1fc764"
 
 [[files]]
 file = "kubejs/server_scripts/economy_reset.js"
@@ -710,7 +710,7 @@ hash = "0f4d37999bc5623e49c9035e42616ccb5c55bca5c48c3a2ac61f6c0c32f55a4e"
 
 [[files]]
 file = "kubejs/server_scripts/market_economy.js"
-hash = "4325f00043afebe5078eb66882b53cb7232b6da9ce6d79c3a5567b12c4a53126"
+hash = "063620426a3eb6b684a9e8a1eb6d0e01a9070f376be93f932b5759f2dbf5693d"
 
 [[files]]
 file = "kubejs/server_scripts/modular_builder.js"
@@ -718,7 +718,7 @@ hash = "773c43df3ee093fbf05825ac4f18e05c2daac0b8fa4e741ea2981c5a915f6b82"
 
 [[files]]
 file = "kubejs/server_scripts/npc_interactions.js"
-hash = "666970f894da721315c514c7bc01fcec9837bca4152e33d323976c3b84875b99"
+hash = "40e3b872714bd22f2f7c0f362fd190187709521b1a9af718a4595d628e0540f4"
 
 [[files]]
 file = "kubejs/server_scripts/pack_crafting.js"
@@ -726,15 +726,15 @@ hash = "3db3c566acd5588ee3233092254f8b338fa4c882a321e3fbacdeb4271e9dbd1d"
 
 [[files]]
 file = "kubejs/server_scripts/priest_healer.js"
-hash = "21fee18afd0abe88f52b9cd1fc764d5fb53557b3312e0fe16ab08d7f4a288dd9"
+hash = "77d491d81a9d313d91039bfa6b0aab084160eac8fe0d408f51b158725a08b936"
 
 [[files]]
 file = "kubejs/server_scripts/village_territory.js"
-hash = "5910cdd111ff175c01fb53b5212fe934b038287ee570c8a1aaafd1acfbadeed3"
+hash = "436572ff21469d88053b75b0a7e042b3a1a681a6a7adbe727878efedbeac4c85"
 
 [[files]]
 file = "kubejs/server_scripts/weapon_forge.js"
-hash = "08937ff123a2eb5855e07dc80afa8a54522a34f6dbf91d429764a4e34fecdcbc"
+hash = "9521647b1612bea977985d0be769890ca3ff3b010b1d3b94ce1f49acc2e2e741"
 
 [[files]]
 file = "kubejs/server_scripts/world_boss.js"

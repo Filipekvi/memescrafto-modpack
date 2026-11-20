@@ -252,7 +252,27 @@ function showEconomyStatus(ctx) {
             treasuryIron = roundEcon(global.getVillageTreasuryTotalIron());
         }
     } catch (e) {}
-    let playerCirculating = roundEcon(netSupply - treasuryIron);
+
+    // Escaneia moedas reais nos inventários dos jogadores online
+    let onlinePlayerIron = 0;
+    try {
+        let srv = ctx.source.server;
+        if (srv && srv.playerList && srv.playerList.players) {
+            srv.playerList.players.forEach(p => {
+                if (!p || !p.inventory) return;
+                p.inventory.allItems.forEach(st => {
+                    if (!st || !st.id) return;
+                    let cnt = st.count || 1;
+                    if (st.id === 'lightmanscurrency:coin_gold') onlinePlayerIron += cnt * 10;
+                    else if (st.id === 'lightmanscurrency:coin_iron') onlinePlayerIron += cnt;
+                    else if (st.id === 'lightmanscurrency:coin_copper') onlinePlayerIron += cnt * 0.1;
+                });
+            });
+        }
+    } catch (e) {}
+    onlinePlayerIron = roundEcon(onlinePlayerIron);
+    let observedTotalIron = roundEcon(treasuryIron + onlinePlayerIron);
+    let untrackedExternalIron = roundEcon(Math.max(0, observedTotalIron - netSupply));
 
     let todayKey = getEconDateKey(0);
     let todayBucket = economyLedger.dailyHistory[todayKey] || { mintedIron: 0, sunkIron: 0, activePlayers: {}, minedGold: 0, minedDiamond: 0 };
@@ -283,11 +303,14 @@ function showEconomyStatus(ctx) {
     sendLine('§e§l📊 LIVRO-RAZÃO ECONÔMICO (MODO OBSERVACIONAL)');
     sendLine(`§7Base: 1 Ouro = 10 Ferro | 1 Cobre = 0.1 Ferro | Hoje: §f${todayKey}`);
     sendLine('§6§m--------------------------------------------------');
-    sendLine(`§a(+) Emissão Total (Faucets): §f${formatGoldIron(minted)}`);
-    sendLine(`§c(-) Queima Total (Sinks):    §f${formatGoldIron(sunk)}`);
-    sendLine(`§e(=) Oferta Monetária (M):    §l§f${formatGoldIron(netSupply)}`);
-    sendLine(`§7    ├─ Cofres de Vilas:      §f${formatGoldIron(treasuryIron)}`);
-    sendLine(`§7    └─ Circulação Players:   §f${formatGoldIron(playerCirculating)}`);
+    sendLine(`§a(+) Emissão Scripts (Faucets): §f${formatGoldIron(minted)}`);
+    sendLine(`§c(-) Queima Scripts (Sinks):    §f${formatGoldIron(sunk)}`);
+    sendLine(`§e(=) Saldo Líquido (Scripts):   §l§f${formatGoldIron(netSupply)}`);
+    sendLine(`§7    ├─ Cofres de Vilas Ativos: §f${formatGoldIron(treasuryIron)}`);
+    sendLine(`§7    ├─ Bolso Players Online:   §f${formatGoldIron(onlinePlayerIron)}`);
+    if (untrackedExternalIron > 0) {
+        sendLine(`§7    └─ Fontes Externas/Drops:  §a+${formatGoldIron(untrackedExternalIron)} §8(loot mobs/pré-ledger)`);
+    }
     sendLine('§6§m--------------------------------------------------');
     sendLine(`§bFluxo Hoje (${todayKey}): §a+${roundEcon(todayBucket.mintedIron || 0)} Fe §7/ §c-${roundEcon(todayBucket.sunkIron || 0)} Fe §7(Saldo: §f${todayNet >= 0 ? '+' : ''}${todayNet} Fe§7)`);
     sendLine(`§bJogadores Únicos: §f${todayActiveCount} hoje §7| §f${active7dCount} nos últimos 7d`);

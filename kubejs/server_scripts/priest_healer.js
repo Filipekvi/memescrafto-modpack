@@ -7,9 +7,12 @@ function healPlayer(player, server) {
     let now = Date.now();
     let lastHeal = priestCooldowns[player.uuid.toString()] || 0;
     let elapsed = Math.round((now - lastHeal) / 1000);
+    let nearV = global.getNearestClaimedVillage ? global.getNearestClaimedVillage(player.x, player.z, 160) : null;
+    let isArcanaSpec = (nearV && nearV.specialization === 'arcana');
+    let maxCd = isArcanaSpec ? 30 : 60;
 
-    if (elapsed < 60) {
-        player.tell(`§6[Padre Bento] §fAguarde mais §e${60 - elapsed}s §fpara receber outra oração de cura.`);
+    if (elapsed < maxCd) {
+        player.tell(`§6[Padre Bento] §fAguarde mais §e${maxCd - elapsed}s §fpara receber outra oração de cura.`);
         return false;
     }
 
@@ -33,6 +36,9 @@ function healPlayer(player, server) {
     player.potionEffects.add('minecraft:instant_health', 1, 1, false, false);
     player.potionEffects.add('minecraft:regeneration', 400, 1, false, true); // 20 segundos
     player.potionEffects.add('minecraft:saturation', 200, 0, false, false);  // 10 segundos
+    if (isArcanaSpec) {
+        player.potionEffects.add('minecraft:absorption', 2400, 1, false, true); // 2 min de Absorção II (Santuário & Forja)
+    }
 
     // Atualiza cooldown
     priestCooldowns[player.uuid.toString()] = now;

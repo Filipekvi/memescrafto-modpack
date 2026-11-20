@@ -202,8 +202,12 @@ function showForgeInfo(player) {
     } else {
         player.tell(`§7Bônus: §a-${Math.round(nextCfg.armorDef * 100)}% Dano Recebido §8| §dVitalidade`);
     }
+    let nearV = global.getNearestClaimedVillage ? global.getNearestClaimedVillage(player.x, player.z, 160) : null;
+    let isArcanaSpec = (nearV && nearV.specialization === 'arcana');
+    let effGoldCost = isArcanaSpec ? Math.max(1, Math.round(nextCfg.goldCost * 0.85)) : nextCfg.goldCost;
+
     player.tell('§6§m----------------------------------------');
-    player.tell(`§7Taxa Real: §6${nextCfg.goldCost} Moedas de Ouro`);
+    player.tell(`§7Taxa Real: §6${effGoldCost} Moedas de Ouro` + (isArcanaSpec ? ' §d(-15% Santuário & Forja)' : ''));
     player.tell(`§7Emblemas: §6${totalTokens} Emblemas do Gladiador` + (enchTax > 0 ? ` §8(inclui +${enchTax} de encant.)` : ''));
     player.tell(`§7Catalisadores: ${nextCfg.catSummary}`);
     player.tell(` ${nextCfg.catDetail}`);
@@ -235,7 +239,9 @@ function forgeEquipment(player, server) {
     let targetTier = nextCfg.tier;
     let enchLevels = countEnchantmentLevels(item);
     let totalTokens = nextCfg.baseTokens + (enchLevels * 2);
-    let requiredGold = nextCfg.goldCost;
+    let nearV = global.getNearestClaimedVillage ? global.getNearestClaimedVillage(player.x, player.z, 160) : null;
+    let isArcanaSpec = (nearV && nearV.specialization === 'arcana');
+    let requiredGold = isArcanaSpec ? Math.max(1, Math.round(nextCfg.goldCost * 0.85)) : nextCfg.goldCost;
 
     // 1. Checa Moedas de Ouro
     let goldCount = 0;

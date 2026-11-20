@@ -176,12 +176,13 @@ function processPackDelivery(player, server) {
     // Penalidade de Fardo Sintético (-60% se fabricado fora do bioma nativo)
     let authMult = isSynthetic ? 0.40 : 1.0;
 
-    // Bônus de Metrópole Real (Nível 3 de Prosperidade da Vila = +10% de pagamento)
-    let nearVillage = global.getNearestVillage ? global.getNearestVillage(player.x, player.z, 160) : null;
-    let metropolisMult = (nearVillage && (nearVillage.taxGold || 0) >= 150) ? 1.10 : 1.0;
+    // Bônus de Metrópole Real (Nível 3 de Prosperidade da Vila = +10% de pagamento) e Polo Mercantil (+20%)
+    let nearVillage = global.getNearestVillage ? global.getNearestVillage(player.x, player.z, 160) : (global.getNearestClaimedVillage ? global.getNearestClaimedVillage(player.x, player.z, 160) : null);
+    let metropolisMult = (nearVillage && Number(nearVillage.prosperityTier || 0) >= 3) ? 1.10 : 1.0;
+    let specMult = (nearVillage && nearVillage.specialization === 'mercante') ? 1.20 : 1.0;
 
     // Pagamento final em moedas de ferro
-    let totalIronCoins = Math.round(info.baseCoin * distMult * demandMult * authMult * metropolisMult);
+    let totalIronCoins = Math.round(info.baseCoin * distMult * demandMult * authMult * metropolisMult * specMult);
     if (totalIronCoins < 1) totalIronCoins = 1;
 
     // Remove 1 fardo da mão
@@ -219,6 +220,9 @@ function processPackDelivery(player, server) {
     player.tell(`§fCotação da Bolsa: §e${demandRate}%`);
     if (metropolisMult > 1.0) {
         player.tell(`§b[Bônus de Metrópole Real] §a+10% de lucro comercial em ${nearVillage.name}!`);
+    }
+    if (specMult > 1.0) {
+        player.tell(`§6[Polo Mercantil] §a+20% de bônus de especialização comercial em ${nearVillage.name}!`);
     }
     player.tell(`§fPagamento: §6${goldCoins} Moedas de Ouro §fe §f${ironCoins} Moedas de Ferro!`);
     if (earnedCatalyst) {

@@ -165,10 +165,41 @@ function getProsperityInfo(v) {
     return { tier: 0, name: '§7Nível 0 (Assentamento)', nextHint: '§8Próx: 15 Ouro (/totem evoluir)', maxGuards: 2, taxBonus: 1.0, nextCost: 15, maxDebtIron: 100 };
 }
 
-function calculatePassiveTaxIron(pop, taxBonus) {
+function calculatePassiveTaxIron(pop, taxBonus, spec) {
     if (!pop || pop < 5) return 0;
-    let baseIron = Math.min(50, Math.floor(pop / 2));
+    let isAgricola = (spec === 'agricola');
+    let baseCap = isAgricola ? 75 : 50;
+    let perVillager = isAgricola ? 0.75 : 0.5;
+    let baseIron = Math.min(baseCap, Math.floor(pop * perVillager));
     return Math.round(baseIron * (taxBonus || 1.0));
+}
+
+const VILLAGE_SPECIALIZATIONS = {
+    mercante: {
+        id: 'mercante',
+        name: '§6🏛️ Polo Mercantil',
+        desc: '+20% pagamento em Fardos | -50% manutenção de Guilda e Armazém'
+    },
+    militar: {
+        id: 'militar',
+        name: '§4⚔️ Fortaleza Militar',
+        desc: 'Resistência I na vila | Cerco 30% mais lento | -50% manut. Intendente e -25% Guardas'
+    },
+    agricola: {
+        id: 'agricola',
+        name: '§2🌾 Celeiro Demográfico',
+        desc: '+50% imposto por aldeão (0.75 Fe, teto 75 Fe) | -50% manutenção do Feirante'
+    },
+    arcana: {
+        id: 'arcana',
+        name: '§d🔮 Santuário & Forja',
+        desc: '-15% Ouro na Forja | Padre c/ Absorção II e 30s CD | -50% manut. Forja, Padre e Banco'
+    }
+};
+
+function getVillageSpecializationInfo(v) {
+    if (!v || !v.specialization) return null;
+    return VILLAGE_SPECIALIZATIONS[v.specialization] || null;
 }
 
 const VILLAGE_NPC_REQS = {
@@ -183,21 +214,34 @@ const VILLAGE_NPC_REQS = {
 
 function calculateVillageUpkeep(v) {
     let pInfo = getProsperityInfo(v);
-    let guardIron = (pInfo.maxGuards || 2) * 2;
+    let spec = v ? v.specialization : null;
+    let rawGuardIron = (pInfo.maxGuards || 2) * 1;
+    let guardIron = (spec === 'militar') ? Math.max(1, Math.round(rawGuardIron * 0.75)) : rawGuardIron;
+
     let npcIron = 0;
     let hired = (v && Array.isArray(v.hiredNpcs)) ? v.hiredNpcs : [];
     for (let i = 0; i < hired.length; i++) {
-        let req = VILLAGE_NPC_REQS[hired[i]];
+        let npcType = hired[i];
+        let req = VILLAGE_NPC_REQS[npcType];
         if (req && req.goldCost > 0) {
-            // 10% do custo do NPC em Ouro convertido para Ferro (1 Ouro = 10 Ferro)
-            npcIron += Math.max(1, Math.round(req.goldCost * 10 * 0.10));
+            // ~10% do custo do NPC por dia (~2% por censo de 30m: 50g -> 10 Fe/30m, 15g -> 3 Fe/30m, 5g -> 1 Fe/30m)
+            let costFe = Math.max(1, Math.round(req.goldCost * 0.2));
+            let hasDiscount =
+                (spec === 'mercante' && (npcType === 'guilda' || npcType === 'armazem')) ||
+                (spec === 'militar' && npcType === 'intendente') ||
+                (spec === 'agricola' && npcType === 'fazendeiro') ||
+                (spec === 'arcana' && (npcType === 'ferreiro' || npcType === 'padre' || npcType === 'banco'));
+            if (hasDiscount) {
+                costFe = Math.max(1, Math.round(costFe * 0.5));
+            }
+            npcIron += costFe;
         }
     }
     return {
         guardIron: guardIron,
         npcIron: npcIron,
         totalIron: guardIron + npcIron,
-        maxDebtIron: pInfo.maxDebtIron || 20
+        maxDebtIron: pInfo.maxDebtIron || 100
     };
 }
 
@@ -222,6 +266,10 @@ function creditVillageTreasury(v, ironAmount) {
 function deductVillageUpkeep(v, upkeepIron, maxDebtIron) {
     if (!v || upkeepIron <= 0) return null;
     let treasuryTotalIron = ((v.taxGold || 0) * 10) + (v.taxIron || 0);
+    let burnedFromTreasury = Math.min(treasuryTotalIron, upkeepIron);
+    if (burnedFromTreasury > 0 && global.econSink) {
+        global.econSink('village_upkeep', burnedFromTreasury, null);
+    }
     let afterUpkeep = treasuryTotalIron - upkeepIron;
     let demotedMsg = null;
 
@@ -1134,7 +1182,6 @@ function upgradeVillageProsperity(player, server) {
     }
 
     v.prosperityTier = pInfo.tier + 1;
-    v.economicPoints = (v.economicPoints || 0) + (cost * 10);
     if (global.econSink && cost > 0) global.econSink('village_upgrade', cost * 10, player);
     saveVillages();
 
@@ -1363,6 +1410,146 @@ function relocateVillageNpc(player, npcType, server) {
     player.give(createNpcContractItem(npcType, namesMap[npcType] || npcType));
     player.playSound('minecraft:block.chest.open', 1.0, 1.0);
     player.tell(`§e[Soberania] O profissional foi recolhido em um §6Contrato de Moradia§e! Clique com o botão direito no novo local desejado.`);
+    return 1;
+}
+
+function dismissVillageNpc(player, npcType, server) {
+    if (!player) return 0;
+    let v = getNearestVillage(player.x, player.z, 160);
+    if (!v || !v.ownerUUID || v.ownerUUID !== player.uuid.toString()) {
+        player.tell('§c[Soberania] Apenas o Governador da vila pode demitir profissionais municipais!');
+        return 0;
+    }
+
+    let req = VILLAGE_NPC_REQS[npcType];
+    if (!req) {
+        player.tell('§cUso: /totem demitir <armazem | fazendeiro | guilda | intendente | banco | padre | ferreiro>');
+        return 0;
+    }
+
+    v.hiredNpcs = Array.isArray(v.hiredNpcs) ? v.hiredNpcs : [];
+    let idx = v.hiredNpcs.indexOf(npcType);
+
+    let keywordsMap = {
+        armazem: ['armazém', 'armazem'],
+        fazendeiro: ['feirante', 'fazendeiro'],
+        guilda: ['guilda'],
+        intendente: ['intendente'],
+        banco: ['banqueiro', 'banco'],
+        padre: ['padre'],
+        ferreiro: ['armeiro', 'forja', 'ferreiro']
+    };
+    let kws = keywordsMap[npcType] || [String(npcType || '').toLowerCase()];
+    let removedEntities = 0;
+
+    try {
+        let entities = player.level.getEntities();
+        entities.forEach(ent => {
+            if (ent && String(ent.type) === 'easy_npc:humanoid') {
+                let dx = ent.x - v.x;
+                let dz = ent.z - v.z;
+                if (dx * dx + dz * dz <= 160 * 160) {
+                    let n = (ent.customName ? ent.customName.string : (ent.name ? ent.name.string : '')).toLowerCase();
+                    for (let i = 0; i < kws.length; i++) {
+                        if (n.includes(kws[i])) {
+                            ent.discard();
+                            removedEntities++;
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+    } catch (e) {}
+
+    if (idx === -1 && removedEntities === 0) {
+        player.tell(`§c[Soberania] Sua cidade não possui o profissional §e${req.name} §ccontratado no momento.`);
+        return 0;
+    }
+
+    if (idx !== -1) {
+        v.hiredNpcs.splice(idx, 1);
+    }
+
+    // Reembolso de 50% do custo do contrato direto no cofre (abatendo dívida se houver)
+    let refundIron = Math.floor(req.goldCost * 5);
+    let cred = creditVillageTreasury(v, refundIron);
+    if (global.econMint && refundIron > 0) global.econMint('village_npc_refund', refundIron, player);
+    saveVillages();
+
+    let upkeep = calculateVillageUpkeep(v);
+    player.playSound('minecraft:block.anvil.destroy', 0.7, 1.2);
+    player.tell('§6§m----------------------------------------');
+    player.tell(`§c§l✦ PROFISSIONAL DEMITIDO: ${req.name.toUpperCase()} ✦`);
+    player.tell(`§7Reembolso ao Cofre (50%): §6+${(refundIron / 10).toFixed(1)} Ouro §8(${cred.paidDebt > 0 ? 'quitou ' + cred.paidDebt + ' Fe de dívida' : 'creditado no cofre'})`);
+    player.tell(`§7Nova Manutenção da Cidade: §c-${upkeep.totalIron} Ferro/30m`);
+    player.tell('§6§m----------------------------------------');
+    return 1;
+}
+
+function setVillageSpecialization(player, specKey) {
+    if (!player) return 0;
+    let v = getNearestVillage(player.x, player.z, 160);
+    if (!v || !v.ownerUUID || v.ownerUUID !== player.uuid.toString()) {
+        player.tell('§c[Soberania] Apenas o Governador da vila pode definir a Especialização da cidade!');
+        return 0;
+    }
+    let pInfo = getProsperityInfo(v);
+    if (pInfo.tier < 1) {
+        player.tell('§c[Soberania] Sua cidade precisa estar pelo menos no §aNível I (Mercantil) §cpara adotar uma Especialização!');
+        return 0;
+    }
+
+    let key = String(specKey || '').toLowerCase();
+    let spec = VILLAGE_SPECIALIZATIONS[key];
+    if (!spec) {
+        player.tell('§cUso: /totem especializar <mercante | militar | agricola | arcana>');
+        return 0;
+    }
+
+    if (v.specialization === key) {
+        player.tell(`§e[Soberania] §fSua cidade já possui a especialização ${spec.name}§f!`);
+        return 0;
+    }
+
+    // Primeira escolha é gratuita; trocar depois custa 20 Ouro
+    let switchCostGold = v.specialization ? 20 : 0;
+    if (switchCostGold > 0) {
+        let invGold = 0;
+        player.inventory.allItems.forEach(i => {
+            if (i.id === 'lightmanscurrency:coin_gold') invGold += i.count;
+        });
+
+        if (invGold >= switchCostGold) {
+            let rem = switchCostGold;
+            player.inventory.allItems.forEach(i => {
+                if (i.id === 'lightmanscurrency:coin_gold' && rem > 0) {
+                    let take = Math.min(i.count, rem);
+                    i.count -= take;
+                    rem -= take;
+                }
+            });
+        } else if ((v.taxGold || 0) >= switchCostGold) {
+            v.taxGold -= switchCostGold;
+        } else {
+            player.tell(`§c[Soberania] Trocar de especialização custa §6${switchCostGold} Moedas de Ouro §c(Inventário: ${invGold} | Cofre: ${v.taxGold || 0}).`);
+            return 0;
+        }
+        if (global.econSink) global.econSink('village_spec_change', switchCostGold * 10, player);
+    }
+
+    v.specialization = key;
+    saveVillages();
+    if (global.chronicleEvent) global.chronicleEvent('village', `Vila "${v.name}" adotou a especialização ${spec.name}.`);
+
+    player.playSound('minecraft:ui.toast.challenge_complete', 1.0, 1.15);
+    player.tell('§6§m----------------------------------------');
+    player.tell(`§a§l✦ ESPECIALIZAÇÃO ADOTADA: ${spec.name} §a§l✦`);
+    player.tell(`§7Bônus Ativos: §f${spec.desc}`);
+    if (switchCostGold > 0) {
+        player.tell(`§7Taxa de Reforma paga: §6${switchCostGold} Ouro`);
+    }
+    player.tell('§6§m----------------------------------------');
     return 1;
 }
 
@@ -1605,7 +1792,10 @@ function showVillageInfo(player) {
     v.population = livePop;
     let pInfo = getProsperityInfo(v);
     let eInfo = getEconomicTier(v.economicPoints || 0);
-    let passiveIron = calculatePassiveTaxIron(livePop, pInfo.taxBonus);
+    let specInfo = getVillageSpecializationInfo(v);
+    let citList = Array.isArray(v.citizens) ? v.citizens : [];
+    let citBonusIron = citList.length * 2;
+    let passiveIron = calculatePassiveTaxIron(livePop, pInfo.taxBonus, v.specialization) + citBonusIron;
     let upkeep = calculateVillageUpkeep(v);
     let debt = v.taxDebtIron || 0;
 
@@ -1613,7 +1803,9 @@ function showVillageInfo(player) {
     player.tell(`§6§l✦ §e§lDOMÍNIO: ${v.name.toUpperCase()} §6§l✦`);
     player.tell(`§7Clã: §6${v.partyName ? v.partyName : '§7[Neutro]'} §8| §7Líder: §e${v.ownerName ? v.ownerName : '§7[Nenhum]'}`);
     player.tell(`§7Habitantes: ${livePop >= 5 ? '§a' + livePop + ' Aldeões §2(Viva)' : '§c' + livePop + ' Aldeões §4(Ruína)'} §8| §7Guarda: §b${pInfo.maxGuards} Guardas`);
+    player.tell(`§7Cidadãos: §a${citList.length} registrado(s) §8(+${citBonusIron}..+${citList.length * 4} Ferro/30m)`);
     player.tell(`§7Prosperidade: ${pInfo.name} §7(${pInfo.nextHint}§7)`);
+    player.tell(`§7Especialização: ${specInfo ? specInfo.name : '§7Nenhuma §8(/totem especializar)'}`);
     player.tell(`§7Poderio Econômico: ${eInfo.name} §8(§e${v.economicPoints || 0} pts§8)`);
     player.tell(`§7Cofre: §6${v.taxGold || 0} Ouro§7, §f${v.taxIron || 0} Ferro §8(§a+${passiveIron} §7/ §c-${upkeep.totalIron} Ferro/30m§8)`);
     if (debt > 0) {
@@ -1838,6 +2030,9 @@ ServerEvents.tick(event => {
 
             let pInfo = getProsperityInfo(v);
             let dropRate = (pInfo.tier >= 3) ? 0.35 : 0.55; // ~3m de ocupação limpa (~4m45s em Metrópole)
+            if (v.specialization === 'militar') {
+                dropRate = dropRate * 0.70; // Fortaleza Militar: captura 30% mais lenta
+            }
 
             let statusColor;
             if (attackersInZone > 0 && defendersInZone === 0) {
@@ -1935,6 +2130,9 @@ ServerEvents.tick(event => {
                 if (pInfo.tier >= 2 && p.potionEffects) {
                     p.potionEffects.add('minecraft:speed', 60, 0, true, false);
                 }
+                if (v.specialization === 'militar' && p.potionEffects) {
+                    p.potionEffects.add('minecraft:resistance', 60, 0, true, false);
+                }
             }
         });
     }
@@ -1988,7 +2186,23 @@ ServerEvents.tick(event => {
             }
 
             let pInfo = getProsperityInfo(v);
-            let totalIron = calculatePassiveTaxIron(pop, pInfo.taxBonus);
+            let citList = Array.isArray(v.citizens) ? v.citizens : [];
+            let citizenIron = 0;
+            let onlineCitizens = 0;
+            for (let ci = 0; ci < citList.length; ci++) {
+                let cUuid = String(citList[ci]);
+                let cPlayer = server.getPlayer(cUuid);
+                if (cPlayer) {
+                    citizenIron += 4;
+                    onlineCitizens++;
+                } else {
+                    citizenIron += 2;
+                }
+            }
+            if (onlineCitizens > 0) {
+                v.economicPoints = (v.economicPoints || 0) + (onlineCitizens * 2);
+            }
+            let totalIron = calculatePassiveTaxIron(pop, pInfo.taxBonus, v.specialization) + citizenIron;
             if (global.econMint && totalIron > 0) global.econMint('village_census', totalIron, null);
 
             creditVillageTreasury(v, totalIron);
@@ -2473,18 +2687,140 @@ function stopVillageRaid(server, villageName, player) {
     return stopped ? 1 : 0;
 }
 
+let citizenInvites = {}; // targetUUID -> villageId
+
+function inviteVillageCitizen(player, target, directAdd) {
+    if (!player || !target) return 0;
+    let v = getNearestVillage(player.x, player.z, 160);
+    if (!v || v.ownerUUID !== player.uuid.toString()) {
+        player.tell('§c[Soberania] Apenas o Governador da vila pode conceder ou convidar para cidadania!');
+        return 0;
+    }
+    let tUUID = target.uuid.toString();
+    if (tUUID === v.ownerUUID) {
+        player.tell('§c[Soberania] Você já é o Governador desta cidade!');
+        return 0;
+    }
+    v.citizens = Array.isArray(v.citizens) ? v.citizens : [];
+    for (let ci = 0; ci < v.citizens.length; ci++) {
+        if (String(v.citizens[ci]) === tUUID) {
+            player.tell(`§6[Soberania] §e${target.name.string} §fjá é cidadão desta vila.`);
+            return 0;
+        }
+    }
+    if (directAdd) {
+        // Remove de outra vila caso já fosse cidadão em outro lugar
+        for (let vid in claimedVillages) {
+            let ov = claimedVillages[vid];
+            if (ov && Array.isArray(ov.citizens)) {
+                let oIdx = ov.citizens.indexOf(tUUID);
+                if (oIdx >= 0) ov.citizens.splice(oIdx, 1);
+            }
+        }
+        v.citizens.push(tUUID);
+        v.citizenNames = v.citizenNames || {};
+        v.citizenNames[tUUID] = target.name.string;
+        saveVillages();
+        player.tell(`§a[Soberania] §e${target.name.string} §aagora é cidadão oficial de §e${v.name}§a!`);
+        target.tell(`§a[Soberania] Você recebeu cidadania na cidade de §e${v.name}§a! Use §e/totem cidadao sair §ase desejar sair no futuro.`);
+        return 1;
+    }
+    citizenInvites[tUUID] = v.id;
+    player.tell(`§a[Soberania] Convite de cidadania enviado para §e${target.name.string}§a!`);
+    target.tell(`§6[Soberania] O Governador §e${player.name.string} §6convidou você para ser Cidadão de §e§l${v.name}§6! Digite §a/totem cidadao aceitar §6para aceitar.`);
+    return 1;
+}
+
+function acceptVillageCitizen(player) {
+    if (!player) return 0;
+    let u = player.uuid.toString();
+    let vId = citizenInvites[u];
+    if (!vId || !claimedVillages[vId]) {
+        player.tell('§c[Soberania] Você não possui convites de cidadania pendentes.');
+        return 0;
+    }
+    let v = claimedVillages[vId];
+    delete citizenInvites[u];
+
+    for (let vid in claimedVillages) {
+        let ov = claimedVillages[vid];
+        if (ov && Array.isArray(ov.citizens)) {
+            let oIdx = ov.citizens.indexOf(u);
+            if (oIdx >= 0) ov.citizens.splice(oIdx, 1);
+        }
+    }
+
+    v.citizens = Array.isArray(v.citizens) ? v.citizens : [];
+    if (v.citizens.indexOf(u) === -1) v.citizens.push(u);
+    v.citizenNames = v.citizenNames || {};
+    v.citizenNames[u] = player.name.string;
+    saveVillages();
+
+    player.tell(`§a[Soberania] Parabéns! Você agora é Cidadão oficial de §6§l${v.name}§a!`);
+    player.playSound('minecraft:ui.toast.challenge_complete', 1.0, 1.2);
+    return 1;
+}
+
+function leaveVillageCitizen(player) {
+    if (!player) return 0;
+    let u = player.uuid.toString();
+    for (let vid in claimedVillages) {
+        let v = claimedVillages[vid];
+        if (v && Array.isArray(v.citizens)) {
+            let idx = v.citizens.indexOf(u);
+            if (idx >= 0) {
+                v.citizens.splice(idx, 1);
+                saveVillages();
+                player.tell(`§e[Soberania] Você renunciou à sua cidadania em §6${v.name}§e.`);
+                return 1;
+            }
+        }
+    }
+    player.tell('§c[Soberania] Você não é cidadão registrado de nenhuma cidade.');
+    return 0;
+}
+
+function listVillageCitizens(player) {
+    if (!player) return 0;
+    let v = getNearestVillage(player.x, player.z, 160);
+    if (!v || !v.ownerUUID) {
+        player.tell('§c[Soberania] Nenhuma cidade governada nas redondezas.');
+        return 0;
+    }
+    let cList = Array.isArray(v.citizens) ? v.citizens : [];
+    let namesMap = v.citizenNames || {};
+    player.tell(`§6§l✦ CIDADÃOS DE ${v.name.toUpperCase()} (${cList.length}) ✦`);
+    if (cList.length === 0) {
+        player.tell('§7Nenhum cidadão registrado fora do clã governante. Use §e/totem cidadao convidar <jogador>§7.');
+    } else {
+        let names = [];
+        for (let i = 0; i < cList.length; i++) {
+            let cu = String(cList[i]);
+            names.push(namesMap[cu] || cu.substring(0, 8));
+        }
+        player.tell('§f• §a' + names.join('§7, §a'));
+    }
+    return 1;
+}
+
 // Mantém referência global atualizável em `kubejs reload server_scripts` para evitar closures antigas no commandRegistry
 global.vtCmd = {
     showCityRankings: showCityRankings,
     hireVillageNpc: hireVillageNpc,
     relocateVillageNpc: relocateVillageNpc,
+    dismissVillageNpc: dismissVillageNpc,
+    setVillageSpecialization: setVillageSpecialization,
     claimVillage: claimVillage,
     collectTaxes: collectTaxes,
     depositTaxes: depositTaxes,
     toggleProtection: toggleProtection,
     showVillageInfo: showVillageInfo,
     upgradeVillageProsperity: upgradeVillageProsperity,
-    stopVillageRaid: stopVillageRaid
+    stopVillageRaid: stopVillageRaid,
+    inviteVillageCitizen: inviteVillageCitizen,
+    acceptVillageCitizen: acceptVillageCitizen,
+    leaveVillageCitizen: leaveVillageCitizen,
+    listVillageCitizens: listVillageCitizens
 };
 
 ServerEvents.commandRegistry(event => {
@@ -2756,6 +3092,34 @@ ServerEvents.commandRegistry(event => {
                     }))
                 )
             )
+            .then(Commands.literal('demitir')
+                .then(Commands.argument('tipo', Arguments.STRING.create(event))
+                    .executes(ctx => {
+                        let p = getPlayerFromContext(ctx);
+                        let tipo = Arguments.STRING.getResult(ctx, 'tipo');
+                        return global.vtCmd.dismissVillageNpc(p, tipo, ctx.source.server);
+                    })
+                    .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
+                        let p = getPlayerFromContext(ctx);
+                        let tipo = Arguments.STRING.getResult(ctx, 'tipo');
+                        return global.vtCmd.dismissVillageNpc(p, tipo, ctx.source.server);
+                    }))
+                )
+            )
+            .then(Commands.literal('especializar')
+                .then(Commands.argument('tipo', Arguments.STRING.create(event))
+                    .executes(ctx => {
+                        let p = getPlayerFromContext(ctx);
+                        let tipo = Arguments.STRING.getResult(ctx, 'tipo');
+                        return global.vtCmd.setVillageSpecialization(p, tipo);
+                    })
+                    .then(Commands.argument('target', Arguments.STRING.create(event)).executes(ctx => {
+                        let p = getPlayerFromContext(ctx);
+                        let tipo = Arguments.STRING.getResult(ctx, 'tipo');
+                        return global.vtCmd.setVillageSpecialization(p, tipo);
+                    }))
+                )
+            )
             .then(Commands.literal('reivindicar')
                 .executes(ctx => {
                     let p = getPlayerFromContext(ctx);
@@ -2866,35 +3230,30 @@ ServerEvents.commandRegistry(event => {
                 )
             )
             .then(Commands.literal('cidadao')
+                .then(Commands.literal('convidar')
+                    .then(Commands.argument('alvo', Arguments.PLAYER.create(event))
+                        .executes(ctx => {
+                            let p = ctx.source.player;
+                            let target = Arguments.PLAYER.getResult(ctx, 'alvo');
+                            return global.vtCmd.inviteVillageCitizen(p, target, false);
+                        })
+                    )
+                )
+                .then(Commands.literal('aceitar')
+                    .executes(ctx => global.vtCmd.acceptVillageCitizen(ctx.source.player))
+                )
+                .then(Commands.literal('sair')
+                    .executes(ctx => global.vtCmd.leaveVillageCitizen(ctx.source.player))
+                )
+                .then(Commands.literal('listar')
+                    .executes(ctx => global.vtCmd.listVillageCitizens(ctx.source.player))
+                )
                 .then(Commands.literal('adicionar')
                     .then(Commands.argument('alvo', Arguments.PLAYER.create(event))
                         .executes(ctx => {
                             let p = ctx.source.player;
                             let target = Arguments.PLAYER.getResult(ctx, 'alvo');
-                            if (!p || !target) return 0;
-                            let v = getNearestVillage(p.x, p.z, 160);
-                            if (!v || v.ownerUUID !== p.uuid.toString()) {
-                                p.tell('§c[Soberania] Apenas o Governador da vila pode conceder cidadania!');
-                                return 0;
-                            }
-                            v.citizens = v.citizens || [];
-                            let tUUID = target.uuid.toString();
-                            let alreadyCitizen = false;
-                            for (let ci = 0; ci < v.citizens.length; ci++) {
-                                if (String(v.citizens[ci]) === tUUID) {
-                                    alreadyCitizen = true;
-                                    break;
-                                }
-                            }
-                            if (!alreadyCitizen) {
-                                v.citizens.push(tUUID);
-                                saveVillages();
-                                p.tell(`§a[Soberania] §e${target.name.string} §aagora é cidadão oficial da vila e tem permissão para construir!`);
-                                target.tell(`§a[Soberania] Você recebeu cidadania na vila de §e${v.name}§a!`);
-                            } else {
-                                p.tell(`§6[Soberania] §e${target.name.string} §fjá é cidadão desta vila.`);
-                            }
-                            return 1;
+                            return global.vtCmd.inviteVillageCitizen(p, target, true);
                         })
                     )
                 )
@@ -3051,7 +3410,8 @@ function applyOfflineCensusCatchup() {
 
         if (cycles >= 1 && !v.ruined && pop >= 5) {
             let pInfo = getProsperityInfo(v);
-            let perCycle = calculatePassiveTaxIron(pop, pInfo.taxBonus);
+            let citList = Array.isArray(v.citizens) ? v.citizens : [];
+            let perCycle = calculatePassiveTaxIron(pop, pInfo.taxBonus, v.specialization) + (citList.length * 2);
             let offlineIron = Math.floor(perCycle * cycles * 0.5);
 
             if (offlineIron > 0) {
