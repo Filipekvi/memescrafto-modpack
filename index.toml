@@ -730,7 +730,7 @@ hash = "21fee18afd0abe88f52b9cd1fc764d5fb53557b3312e0fe16ab08d7f4a288dd9"
 
 [[files]]
 file = "kubejs/server_scripts/village_territory.js"
-hash = "ac9cade43a99bda106f2c710214016278ef0fc41842fae940392d2396a41165f"
+hash = "5910cdd111ff175c01fb53b5212fe934b038287ee570c8a1aaafd1acfbadeed3"
 
 [[files]]
 file = "kubejs/server_scripts/weapon_forge.js"

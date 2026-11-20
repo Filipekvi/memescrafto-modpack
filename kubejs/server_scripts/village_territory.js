@@ -2422,6 +2422,71 @@ global.getVillageTreasuryTotalIron = function() {
 // ----------------------------------------------------
 // REGISTRO DE COMANDOS (/totem e /cla)
 // ----------------------------------------------------
+function stopVillageRaid(server, villageName, player) {
+    if (!server) return 0;
+    let overworld = server.getLevel('minecraft:overworld');
+    if (!overworld) return 0;
+
+    let targetV = null;
+    if (villageName) {
+        let q = String(villageName).toLowerCase();
+        for (let id in claimedVillages) {
+            let v = claimedVillages[id];
+            if (v && v.name && v.name.toLowerCase() === q) {
+                targetV = v;
+                break;
+            }
+        }
+    } else if (player) {
+        targetV = getNearestVillage(player.x, player.z, 160);
+    }
+
+    if (!targetV) {
+        let msg = '§c[Soberania] Vila não encontrada para encerrar raid.';
+        if (player) player.tell(msg);
+        else console.log(msg);
+        return 0;
+    }
+
+    let stopped = false;
+    try {
+        let BlockPos = Java.loadClass('net.minecraft.core.BlockPos');
+        let raid = overworld.getRaidAt(new BlockPos(Math.floor(targetV.x), Math.floor(targetV.y || 66), Math.floor(targetV.z)));
+        if (raid) {
+            let active = typeof raid.isStopped === 'function' ? !raid.isStopped() : true;
+            if (active && typeof raid.stop === 'function') {
+                raid.stop();
+                stopped = true;
+            }
+        }
+    } catch (e) {
+        console.error('[Soberania] Erro ao encerrar raid:', e);
+    }
+
+    server.runCommandSilent(`execute positioned ${Math.floor(targetV.x)} ${Math.floor(targetV.y || 66)} ${Math.floor(targetV.z)} run kill @e[distance=..180,type=#minecraft:raiders]`);
+
+    let out = stopped
+        ? `§a[Soberania] Raid em §e${targetV.name} §aencerrada e raiders removidos.`
+        : `§e[Soberania] Nenhuma raid ativa encontrada no centro de §e${targetV.name}§e (raiders próximos limpos).`;
+    if (player) player.tell(out);
+    else console.log(out);
+    return stopped ? 1 : 0;
+}
+
+// Mantém referência global atualizável em `kubejs reload server_scripts` para evitar closures antigas no commandRegistry
+global.vtCmd = {
+    showCityRankings: showCityRankings,
+    hireVillageNpc: hireVillageNpc,
+    relocateVillageNpc: relocateVillageNpc,
+    claimVillage: claimVillage,
+    collectTaxes: collectTaxes,
+    depositTaxes: depositTaxes,
+    toggleProtection: toggleProtection,
+    showVillageInfo: showVillageInfo,
+    upgradeVillageProsperity: upgradeVillageProsperity,
+    stopVillageRaid: stopVillageRaid
+};
+
 ServerEvents.commandRegistry(event => {
     const { commands: Commands, arguments: Arguments } = event;
 
@@ -2591,71 +2656,6 @@ ServerEvents.commandRegistry(event => {
                 return 1;
             }))
     );
-
-function stopVillageRaid(server, villageName, player) {
-    if (!server) return 0;
-    let overworld = server.getLevel('minecraft:overworld');
-    if (!overworld) return 0;
-
-    let targetV = null;
-    if (villageName) {
-        let q = String(villageName).toLowerCase();
-        for (let id in claimedVillages) {
-            let v = claimedVillages[id];
-            if (v && v.name && v.name.toLowerCase() === q) {
-                targetV = v;
-                break;
-            }
-        }
-    } else if (player) {
-        targetV = getNearestVillage(player.x, player.z, 160);
-    }
-
-    if (!targetV) {
-        let msg = '§c[Soberania] Vila não encontrada para encerrar raid.';
-        if (player) player.tell(msg);
-        else console.log(msg);
-        return 0;
-    }
-
-    let stopped = false;
-    try {
-        let BlockPos = Java.loadClass('net.minecraft.core.BlockPos');
-        let raid = overworld.getRaidAt(new BlockPos(Math.floor(targetV.x), Math.floor(targetV.y || 66), Math.floor(targetV.z)));
-        if (raid) {
-            let active = typeof raid.isStopped === 'function' ? !raid.isStopped() : true;
-            if (active && typeof raid.stop === 'function') {
-                raid.stop();
-                stopped = true;
-            }
-        }
-    } catch (e) {
-        console.error('[Soberania] Erro ao encerrar raid:', e);
-    }
-
-    server.runCommandSilent(`execute positioned ${Math.floor(targetV.x)} ${Math.floor(targetV.y || 66)} ${Math.floor(targetV.z)} run kill @e[distance=..180,type=#minecraft:raiders]`);
-
-    let out = stopped
-        ? `§a[Soberania] Raid em §e${targetV.name} §aencerrada e raiders removidos.`
-        : `§e[Soberania] Nenhuma raid ativa encontrada no centro de §e${targetV.name}§e (raiders próximos limpos).`;
-    if (player) player.tell(out);
-    else console.log(out);
-    return stopped ? 1 : 0;
-}
-
-// Mantém referência global atualizável em `kubejs reload server_scripts` para evitar closures antigas no commandRegistry
-global.vtCmd = {
-    showCityRankings: showCityRankings,
-    hireVillageNpc: hireVillageNpc,
-    relocateVillageNpc: relocateVillageNpc,
-    claimVillage: claimVillage,
-    collectTaxes: collectTaxes,
-    depositTaxes: depositTaxes,
-    toggleProtection: toggleProtection,
-    showVillageInfo: showVillageInfo,
-    upgradeVillageProsperity: upgradeVillageProsperity,
-    stopVillageRaid: stopVillageRaid
-};
 
     // Ranking de Cidades / Vilas (/ranking cidades)
     event.register(
