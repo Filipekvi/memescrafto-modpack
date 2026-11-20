@@ -171,29 +171,30 @@ function calculatePassiveTaxIron(pop, taxBonus, spec) {
     let baseCap = isAgricola ? 75 : 50;
     let perVillager = isAgricola ? 0.75 : 0.5;
     let baseIron = Math.min(baseCap, Math.floor(pop * perVillager));
-    return Math.round(baseIron * (taxBonus || 1.0));
+    let specTaxMult = (spec === 'militar') ? 0.85 : 1.0;
+    return Math.round(baseIron * (taxBonus || 1.0) * specTaxMult);
 }
 
 const VILLAGE_SPECIALIZATIONS = {
     mercante: {
         id: 'mercante',
         name: '§6🏛️ Polo Mercantil',
-        desc: '+20% pagamento em Fardos | -50% manutenção de Guilda e Armazém'
+        desc: '+20% pagamento em Fardos | -50% manut. Guilda/Armazém/Banco | §cTradeoff: +25% manut. Guardas'
     },
     militar: {
         id: 'militar',
         name: '§4⚔️ Fortaleza Militar',
-        desc: 'Resistência I na vila | Cerco 30% mais lento | -50% manut. Intendente e -25% Guardas'
+        desc: 'Resistência I | Cerco -30% drop | -50% manut. Intendente e -25% Guardas | §cTradeoff: -15% imposto passivo'
     },
     agricola: {
         id: 'agricola',
         name: '§2🌾 Celeiro Demográfico',
-        desc: '+50% imposto por aldeão (0.75 Fe, teto 75 Fe) | -50% manutenção do Feirante'
+        desc: '+50% imposto por aldeão (0.75 Fe, teto 75 Fe) | -50% manut. Feirante | §cTradeoff: +50% manut. NPCs avançados'
     },
     arcana: {
         id: 'arcana',
         name: '§d🔮 Santuário & Forja',
-        desc: '-15% Ouro na Forja | Padre c/ Absorção II e 30s CD | -50% manut. Forja, Padre e Banco'
+        desc: '-15% Ouro na Forja | Padre c/ Absorção II e 30s CD | -50% manut. Forja/Padre | §cTradeoff: -15% em Fardos'
     }
 };
 
@@ -216,7 +217,12 @@ function calculateVillageUpkeep(v) {
     let pInfo = getProsperityInfo(v);
     let spec = v ? v.specialization : null;
     let rawGuardIron = (pInfo.maxGuards || 2) * 1;
-    let guardIron = (spec === 'militar') ? Math.max(1, Math.round(rawGuardIron * 0.75)) : rawGuardIron;
+    let guardIron = rawGuardIron;
+    if (spec === 'militar') {
+        guardIron = Math.max(1, Math.round(rawGuardIron * 0.75));
+    } else if (spec === 'mercante') {
+        guardIron = Math.max(1, Math.round(rawGuardIron * 1.25));
+    }
 
     let npcIron = 0;
     let hired = (v && Array.isArray(v.hiredNpcs)) ? v.hiredNpcs : [];
@@ -227,12 +233,16 @@ function calculateVillageUpkeep(v) {
             // ~10% do custo do NPC por dia (~2% por censo de 30m: 50g -> 10 Fe/30m, 15g -> 3 Fe/30m, 5g -> 1 Fe/30m)
             let costFe = Math.max(1, Math.round(req.goldCost * 0.2));
             let hasDiscount =
-                (spec === 'mercante' && (npcType === 'guilda' || npcType === 'armazem')) ||
+                (spec === 'mercante' && (npcType === 'guilda' || npcType === 'armazem' || npcType === 'banco')) ||
                 (spec === 'militar' && npcType === 'intendente') ||
                 (spec === 'agricola' && npcType === 'fazendeiro') ||
-                (spec === 'arcana' && (npcType === 'ferreiro' || npcType === 'padre' || npcType === 'banco'));
+                (spec === 'arcana' && (npcType === 'ferreiro' || npcType === 'padre'));
+            let hasPenalty =
+                (spec === 'agricola' && (npcType === 'guilda' || npcType === 'intendente' || npcType === 'banco' || npcType === 'ferreiro'));
             if (hasDiscount) {
                 costFe = Math.max(1, Math.round(costFe * 0.5));
+            } else if (hasPenalty) {
+                costFe = Math.max(1, Math.round(costFe * 1.5));
             }
             npcIron += costFe;
         }

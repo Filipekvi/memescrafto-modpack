@@ -710,7 +710,7 @@ hash = "0f4d37999bc5623e49c9035e42616ccb5c55bca5c48c3a2ac61f6c0c32f55a4e"
 
 [[files]]
 file = "kubejs/server_scripts/market_economy.js"
-hash = "063620426a3eb6b684a9e8a1eb6d0e01a9070f376be93f932b5759f2dbf5693d"
+hash = "977b8a852cc005ec282f8db71b712790179788a91183163a459450440c2759f6"
 
 [[files]]
 file = "kubejs/server_scripts/modular_builder.js"
@@ -718,7 +718,7 @@ hash = "773c43df3ee093fbf05825ac4f18e05c2daac0b8fa4e741ea2981c5a915f6b82"
 
 [[files]]
 file = "kubejs/server_scripts/npc_interactions.js"
-hash = "45416835da95167e78d93ab0510c414173b4a261d146f3406fd04f90e0ff4581"
+hash = "08577ea6cfc88d0a5bd04e7fe63754cc455312e367c6e64dd86725c4d2dbe455"
 
 [[files]]
 file = "kubejs/server_scripts/pack_crafting.js"
@@ -730,7 +730,7 @@ hash = "77d491d81a9d313d91039bfa6b0aab084160eac8fe0d408f51b158725a08b936"
 
 [[files]]
 file = "kubejs/server_scripts/village_territory.js"
-hash = "436572ff21469d88053b75b0a7e042b3a1a681a6a7adbe727878efedbeac4c85"
+hash = "1a4fc658649ef83688035e7d438bd956bf7802a726ac3a2e794c46b850c9aca4"
 
 [[files]]
 file = "kubejs/server_scripts/weapon_forge.js"

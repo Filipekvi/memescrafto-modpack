@@ -176,10 +176,12 @@ function processPackDelivery(player, server) {
     // Penalidade de Fardo Sintético (-60% se fabricado fora do bioma nativo)
     let authMult = isSynthetic ? 0.40 : 1.0;
 
-    // Bônus de Metrópole Real (Nível 3 de Prosperidade da Vila = +10% de pagamento) e Polo Mercantil (+20%)
+    // Bônus de Metrópole Real (Nível 3 de Prosperidade da Vila = +10% de pagamento), Polo Mercantil (+20%) e tradeoff Santuário & Forja (-15%)
     let nearVillage = global.getNearestVillage ? global.getNearestVillage(player.x, player.z, 160) : (global.getNearestClaimedVillage ? global.getNearestClaimedVillage(player.x, player.z, 160) : null);
     let metropolisMult = (nearVillage && Number(nearVillage.prosperityTier || 0) >= 3) ? 1.10 : 1.0;
-    let specMult = (nearVillage && nearVillage.specialization === 'mercante') ? 1.20 : 1.0;
+    let specMult = 1.0;
+    if (nearVillage && nearVillage.specialization === 'mercante') specMult = 1.20;
+    else if (nearVillage && nearVillage.specialization === 'arcana') specMult = 0.85;
 
     // Pagamento final em moedas de ferro
     let totalIronCoins = Math.round(info.baseCoin * distMult * demandMult * authMult * metropolisMult * specMult);
@@ -223,6 +225,8 @@ function processPackDelivery(player, server) {
     }
     if (specMult > 1.0) {
         player.tell(`§6[Polo Mercantil] §a+20% de bônus de especialização comercial em ${nearVillage.name}!`);
+    } else if (specMult < 1.0) {
+        player.tell(`§d[Santuário & Forja] §c-15% de cotação comercial em ${nearVillage.name} (foco em forja e misticismo).`);
     }
     player.tell(`§fPagamento: §6${goldCoins} Moedas de Ouro §fe §f${ironCoins} Moedas de Ferro!`);
     if (earnedCatalyst) {
