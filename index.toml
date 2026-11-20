@@ -238,7 +238,7 @@ hash = "02cd35fbcc371cf63303ae1264ad9f4613b3f73ace93417af825baf7d3ac7baf"
 
 [[files]]
 file = "config/oculus.properties"
-hash = "0e29e0c85fa5eed57ff462029b7826d303e571566ab473343e49c9ac944881e6"
+hash = "50b5d406ce7f18f1cc005ecf38121fbeb5e03fdc42245b8a716db1b17abf90d8"
 
 [[files]]
 file = "config/sidebar_buttons.json"
@@ -730,7 +730,7 @@ hash = "21fee18afd0abe88f52b9cd1fc764d5fb53557b3312e0fe16ab08d7f4a288dd9"
 
 [[files]]
 file = "kubejs/server_scripts/village_territory.js"
-hash = "b7a057ac7a2256463d482865c905068d2af64c58ecf420058904ee0acba6a5bd"
+hash = "ac9cade43a99bda106f2c710214016278ef0fc41842fae940392d2396a41165f"
 
 [[files]]
 file = "kubejs/server_scripts/weapon_forge.js"

@@ -159,10 +159,16 @@ function getProsperityInfo(v) {
             v.prosperityTier = tier;
         }
     }
-    if (tier >= 3) return { tier: 3, name: '§6§lNível III (Metrópole)', nextHint: '§6Máximo', maxGuards: 12, taxBonus: 1.25, nextCost: 0, maxDebtIron: 400 };
-    if (tier === 2) return { tier: 2, name: '§bNível II (Bastião)',    nextHint: '§8Próx: 150 Ouro (/totem evoluir)', maxGuards: 8,  taxBonus: 1.25, nextCost: 150, maxDebtIron: 150 };
-    if (tier === 1) return { tier: 1, name: '§aNível I (Mercantil)',   nextHint: '§8Próx: 50 Ouro (/totem evoluir)',  maxGuards: 4,  taxBonus: 1.0,  nextCost: 50, maxDebtIron: 50 };
-    return { tier: 0, name: '§7Nível 0 (Assentamento)', nextHint: '§8Próx: 15 Ouro (/totem evoluir)', maxGuards: 2, taxBonus: 1.0, nextCost: 15, maxDebtIron: 20 };
+    if (tier >= 3) return { tier: 3, name: '§6§lNível III (Metrópole)', nextHint: '§6Máximo', maxGuards: 12, taxBonus: 1.25, nextCost: 0, maxDebtIron: 2000 };
+    if (tier === 2) return { tier: 2, name: '§bNível II (Bastião)',    nextHint: '§8Próx: 150 Ouro (/totem evoluir)', maxGuards: 8,  taxBonus: 1.25, nextCost: 150, maxDebtIron: 800 };
+    if (tier === 1) return { tier: 1, name: '§aNível I (Mercantil)',   nextHint: '§8Próx: 50 Ouro (/totem evoluir)',  maxGuards: 4,  taxBonus: 1.0,  nextCost: 50, maxDebtIron: 300 };
+    return { tier: 0, name: '§7Nível 0 (Assentamento)', nextHint: '§8Próx: 15 Ouro (/totem evoluir)', maxGuards: 2, taxBonus: 1.0, nextCost: 15, maxDebtIron: 100 };
+}
+
+function calculatePassiveTaxIron(pop, taxBonus) {
+    if (!pop || pop < 5) return 0;
+    let baseIron = Math.min(50, Math.floor(pop / 2));
+    return Math.round(baseIron * (taxBonus || 1.0));
 }
 
 const VILLAGE_NPC_REQS = {
@@ -1599,7 +1605,7 @@ function showVillageInfo(player) {
     v.population = livePop;
     let pInfo = getProsperityInfo(v);
     let eInfo = getEconomicTier(v.economicPoints || 0);
-    let passiveIron = livePop >= 5 ? Math.round(Math.min(15, Math.floor(livePop / 2)) * pInfo.taxBonus) : 0;
+    let passiveIron = calculatePassiveTaxIron(livePop, pInfo.taxBonus);
     let upkeep = calculateVillageUpkeep(v);
     let debt = v.taxDebtIron || 0;
 
@@ -1982,8 +1988,7 @@ ServerEvents.tick(event => {
             }
 
             let pInfo = getProsperityInfo(v);
-            let baseIron = Math.min(15, Math.floor(pop / 2));
-            let totalIron = Math.round(baseIron * pInfo.taxBonus);
+            let totalIron = calculatePassiveTaxIron(pop, pInfo.taxBonus);
             if (global.econMint && totalIron > 0) global.econMint('village_census', totalIron, null);
 
             creditVillageTreasury(v, totalIron);
@@ -3046,8 +3051,7 @@ function applyOfflineCensusCatchup() {
 
         if (cycles >= 1 && !v.ruined && pop >= 5) {
             let pInfo = getProsperityInfo(v);
-            let baseIron = Math.min(15, Math.floor(pop / 2));
-            let perCycle = Math.round(baseIron * pInfo.taxBonus);
+            let perCycle = calculatePassiveTaxIron(pop, pInfo.taxBonus);
             let offlineIron = Math.floor(perCycle * cycles * 0.5);
 
             if (offlineIron > 0) {
