@@ -722,7 +722,7 @@ hash = "08577ea6cfc88d0a5bd04e7fe63754cc455312e367c6e64dd86725c4d2dbe455"
 
 [[files]]
 file = "kubejs/server_scripts/pack_crafting.js"
-hash = "3db3c566acd5588ee3233092254f8b338fa4c882a321e3fbacdeb4271e9dbd1d"
+hash = "5cc4c950688c0b9fa9285a4781f5ac84c6440f6a657b52da8b8c16fd671a7fd7"
 
 [[files]]
 file = "kubejs/server_scripts/priest_healer.js"

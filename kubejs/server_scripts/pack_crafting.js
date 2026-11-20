@@ -538,3 +538,38 @@ EntityEvents.death(event => {
         }
     }
 });
+
+// Desbloqueia receitas permitidas do Immersive Aircraft no livro verde ao entrar
+const ALLOWED_AIRCRAFT_RECIPES = [
+    'kubejs:gated_airship',
+    'immersive_aircraft:cargo_airship',
+    'immersive_aircraft:warship',
+    'immersive_aircraft:sail',
+    'immersive_aircraft:hull',
+    'immersive_aircraft:engine',
+    'immersive_aircraft:boiler',
+    'immersive_aircraft:propeller',
+    'immersive_aircraft:heavy_crossbow',
+    'immersive_aircraft:telescope',
+    'immersive_aircraft:eco_engine',
+    'immersive_aircraft:enhanced_propeller',
+    'immersive_aircraft:gyroscope',
+    'immersive_aircraft:gyroscope_dials',
+    'immersive_aircraft:gyroscope_hud',
+    'immersive_aircraft:hull_reinforcement',
+    'immersive_aircraft:improved_landing_gear',
+    'immersive_aircraft:industrial_gears',
+    'immersive_aircraft:nether_engine',
+    'immersive_aircraft:steel_boiler',
+    'immersive_aircraft:sturdy_pipes'
+];
+
+PlayerEvents.loggedIn(event => {
+    let p = event.player;
+    let server = event.server;
+    if (!p || !server) return;
+    let pName = p.name.string;
+    ALLOWED_AIRCRAFT_RECIPES.forEach(recipeId => {
+        server.runCommandSilent(`recipe give ${pName} ${recipeId}`);
+    });
+});
